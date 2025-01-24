@@ -83,32 +83,35 @@ def reshape_3d_array(arr: np.array) :
 
     return array_in_df
 
+def main():
+    # Start MLflow experiment
+    mlflow.set_experiment("Collaborative_Filtering_Experiment")
 
-# Start MLflow experiment
-mlflow.set_experiment("Collaborative_Filtering_Experiment")
+    with mlflow.start_run():
+        try:
+            # Apply functions
+            file_path_processed_data = '../processed_data/df_collaborative_filtering.csv'
+            df = pd.read_csv(file_path_processed_data)
+            df_pivoted, matrix = matrix_dataset(df, "title", "userId")
+            distances, indices = knn_model(df_pivoted, matrix, 5)
+            distance_df = reshape_3d_array(distances)
+            indices_df = reshape_3d_array(indices)
 
-with mlflow.start_run():
-    try:
-        # Apply functions
-        file_path_processed_data = '../processed_data/df_collaborative_filtering.csv'
-        df = pd.read_csv(file_path_processed_data)
-        df_pivoted, matrix = matrix_dataset(df, "title", "userId")
-        distances, indices = knn_model(df_pivoted, matrix, 5)
-        distance_df = reshape_3d_array(distances)
-        indices_df = reshape_3d_array(indices)
+            # Log parameters
+            mlflow.log_param("number_neighbors", 5)
 
-        # Log parameters
-        mlflow.log_param("number_neighbors", 5)
+            # Log custom metrics 
+            #mlflow.log_metric("avg_distance", np.mean(distances)) - not meaningfull
 
-        # Log custom metrics 
-        #mlflow.log_metric("avg_distance", np.mean(distances)) - not meaningfull
+            # Log artifacts
+            distance_df.to_csv("distances.csv", index=False)
+            indices_df.to_csv("indices.csv", index=False)
+            mlflow.log_artifact("distances.csv")
+            mlflow.log_artifact("indices.csv")
 
-        # Log artifacts
-        distance_df.to_csv("distances.csv", index=False)
-        indices_df.to_csv("indices.csv", index=False)
-        mlflow.log_artifact("distances.csv")
-        mlflow.log_artifact("indices.csv")
+        except Exception as e:
+            print(f"Error during collaborative filtering modelling run: {e}")
+            raise
 
-    except Exception as e:
-        print(f"Error during collaborative filtering modelling run: {e}")
-        raise
+if __name__ == "__main__":
+    main()

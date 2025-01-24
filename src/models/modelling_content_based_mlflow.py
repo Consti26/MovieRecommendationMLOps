@@ -108,32 +108,33 @@ def recommend_movie(movie_title, df, number_of_reco, column_name='genres', stop_
     
     return recommendations_df
 
+def main():
+    # Start MLflow experiment
+    mlflow.set_experiment("Content_based_Experiment")
 
-# Start MLflow experiment
-mlflow.set_experiment("Content_based_Experiment")
+    with mlflow.start_run():
+        try:
+            # Apply functions
+            file_path_processed_data = '../processed_data/df_content_filtering.csv'
+            df = pd.read_csv(file_path_processed_data)
+            movie_title = "Inception"  # Replace with the title of the movie you want to get recommendations for
+            number_of_reco = 10  # Number of recommendations to return
+            recommendation = recommend_movie(movie_title, df, number_of_reco)
 
-with mlflow.start_run():
-    try:
-        # Apply functions
-        file_path_processed_data = '../processed_data/df_content_filtering.csv'
-        df = pd.read_csv(file_path_processed_data)
-        movie_title = "Inception"  # Replace with the title of the movie you want to get recommendations for
-        number_of_reco = 10  # Number of recommendations to return
-        recommendation = recommend_movie(movie_title, df, number_of_reco)
+            # Log parameters
+            mlflow.log_param("Similar_movie", movie_title)
+            mlflow.log_param("number_neighbors", number_of_reco)
 
-        # Log parameters
-        mlflow.log_param("Similar_movie", movie_title)
-        mlflow.log_param("number_neighbors", number_of_reco)
+            # Log custom metrics 
+            #mlflow.log_metric("avg_distance", np.mean(distances)) - not meaningfull
 
-        # Log custom metrics 
-        #mlflow.log_metric("avg_distance", np.mean(distances)) - not meaningfull
+            # Log artifacts
+            recommendation.to_csv("recommendation.csv", index=False)
+            mlflow.log_artifact("recommendation.csv")
 
-        # Log artifacts
-        recommendation.to_csv("recommendation.csv", index=False)
-        mlflow.log_artifact("recommendation.csv")
+        except Exception as e:
+            print(f"Error during content based modelling run: {e}")
+            raise
 
-    except Exception as e:
-        print(f"Error during content based modelling run: {e}")
-        raise
-
-print(recommendation)
+if __name__ == "__main__":
+    main()
