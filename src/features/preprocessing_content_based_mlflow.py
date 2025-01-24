@@ -1,6 +1,16 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import mlflow
+
+# Get data
+file_path_movie = '../raw_data/movie.csv'
+#file_path_rating ='../raw_data/rating.csv'
+#file_path_tag ='../raw_data/tag.csv'
+
+df_movie = pd.read_csv(file_path_movie)
+#df_rating = pd.read_csv(file_path_rating)
+#df_tag = pd.read_csv(file_path_tag)
+
 
 def extract_title(title):
     """
@@ -97,15 +107,13 @@ mlflow.set_experiment("Content_based_preprocessing")
 with mlflow.start_run():
     try:
         # Apply functions
-        movie_path = '../raw_data/movie.csv'
-        movies = pd.read_csv(movie_path)
-        movies.rename(columns={'title':'title_year'}, inplace=True)
-        movies['title_year'] = movies['title_year'].apply(lambda x: x.strip()) # remove spaces in tilte_year
-        movies['title'] = movies['title_year'].apply(extract_title)
-        movies['year'] = movies['title_year'].apply(extract_year)
-        movies = filter_movies_with_genres(movies)
-        movies = clean_genre_column(movies)
-        movies.to_csv('../processed_data/df_content_filtering.csv', sep = ',')
+        df_movie.rename(columns={'title':'title_year'}, inplace=True)
+        df_movie['title_year'] = df_movie['title_year'].apply(lambda x: x.strip()) # remove spaces in tilte_year
+        df_movie['title'] = df_movie['title_year'].apply(extract_title)
+        df_movie['year'] = df_movie['title_year'].apply(extract_year)
+        df_movie = filter_movies_with_genres(df_movie)
+        df_movie = clean_genre_column(df_movie)
+        df_movie.to_csv('../processed_data/df_content_filtering.csv', sep = ',')
 
         # Log parameters
         #mlflow.log_param("Similar_movie", movie_title)
