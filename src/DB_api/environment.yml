@@ -10,3 +10,4 @@ dependencies:
   - httptools
   - uvloop 
   - uvicorn
+  - pydantic

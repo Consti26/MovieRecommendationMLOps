@@ -2,7 +2,7 @@ FROM continuumio/miniconda3
 WORKDIR /home/jovyan/DB_api/
 COPY environment.yml .
 COPY db_api.py .
-COPY .env .
+COPY .env_git .
 RUN conda init bash
 RUN conda env create -f environment.yml
 SHELL ["conda", "run", "-n", "conda_env", "/bin/bash", "-c"]

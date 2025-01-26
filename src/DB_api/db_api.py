@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 import kagglehub
 import shutil
+from pydantic import BaseModel
 
 # Load environment variables from a .env file
 load_dotenv()
