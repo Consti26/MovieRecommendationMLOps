@@ -19,6 +19,17 @@ CHUNKSIZE = int(os.getenv('CHUNKSIZE', 10000))
 
 app = FastAPI()
 
+class Movie(BaseModel):
+    movieId: int
+    title: str
+    genres: str
+
+class Rating(BaseModel):
+    userId: int
+    movieId: int
+    rating: float
+    timestamp: int
+
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
@@ -155,5 +166,63 @@ def create_database(remove_existing: bool = Query(False)):
     try:
         create_db_from_csv(DATASET_PATH, DATABASE_PATH, remove_existing)
         return {"message": "Database created successfully!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/movies")
+def add_movie(movie: Movie):
+    """Endpoint to add a new movie."""
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO movies (movieId, title, genres) VALUES (?, ?, ?)", 
+                       (movie.movieId, movie.title, movie.genres))
+        conn.commit()
+        conn.close()
+        return {"message": "Movie added successfully!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/ratings")
+def add_rating(rating: Rating):
+    """Endpoint to add a new rating."""
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO ratings (userId, movieId, rating, timestamp) VALUES (?, ?, ?, ?)", 
+                       (rating.userId, rating.movieId, rating.rating, rating.timestamp))
+        conn.commit()
+        conn.close()
+        return {"message": "Rating added successfully!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/movies/batch")
+def add_movies_batch(movies: List[Movie]):
+    """Endpoint to add multiple movies."""
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+        for movie in movies:
+            cursor.execute("INSERT INTO movies (movieId, title, genres) VALUES (?, ?, ?)", 
+                           (movie.movieId, movie.title, movie.genres))
+        conn.commit()
+        conn.close()
+        return {"message": "Movies added successfully!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/ratings/batch")
+def add_ratings_batch(ratings: List[Rating]):
+    """Endpoint to add multiple ratings."""
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+        for rating in ratings:
+            cursor.execute("INSERT INTO ratings (userId, movieId, rating, timestamp) VALUES (?, ?, ?, ?)", 
+                           (rating.userId, rating.movieId, rating.rating, rating.timestamp))
+        conn.commit()
+        conn.close()
+        return {"message": "Ratings added successfully!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
