@@ -70,31 +70,34 @@ def remove_duplicate_rows(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def main():
+    # Start MLflow experiment
+    mlflow.set_experiment("Collaborative_filtering_preprocessing")
 
-# Start MLflow experiment
-mlflow.set_experiment("CCollaborative_filtering_preprocessing")
+    with mlflow.start_run():
+        try:
+            # Apply functions
+            df = remove_columns(df_movie, ['genres'])
+            df = merging_datasets(df, df_rating, 'movieId')
+            df = remove_columns(df, ['timestamp'])
+            df = remove_duplicate_rows(df)
+            df.head(10)
+            df.to_csv('../processed_data/df_collaborative_filtering.csv', sep = ',')
 
-with mlflow.start_run():
-    try:
-        # Apply functions
-        df = remove_columns(df_movie, ['genres'])
-        df = merging_datasets(df, df_rating, 'movieId')
-        df = remove_columns(df, ['timestamp'])
-        df = remove_duplicate_rows(df)
-        df.head(10)
-        df.to_csv('../processed_data/df_collaborative_filtering.csv', sep = ',')
+            # Log parameters
+            #mlflow.log_param("Similar_movie", movie_title)
+            #mlflow.log_param("number_neighbors", number_of_reco)
 
-        # Log parameters
-        #mlflow.log_param("Similar_movie", movie_title)
-        #mlflow.log_param("number_neighbors", number_of_reco)
+            # Log custom metrics 
+            #mlflow.log_metric("avg_distance", np.mean(distances)) - not meaningfull
 
-        # Log custom metrics 
-        #mlflow.log_metric("avg_distance", np.mean(distances)) - not meaningfull
+            # Log artifacts
+            #recommendation.to_csv("recommendation.csv", index=False)
+            #mlflow.log_artifact("recommendation.csv")
 
-        # Log artifacts
-        #recommendation.to_csv("recommendation.csv", index=False)
-        #mlflow.log_artifact("recommendation.csv")
+        except Exception as e:
+            print(f"Error during collaborative filtering preprocessing run: {e}")
+            raise
 
-    except Exception as e:
-        print(f"Error during collaborative filtering preprocessing run: {e}")
-        raise
+if __name__ == "__main__":
+    main()
