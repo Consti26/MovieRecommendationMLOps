@@ -81,3 +81,7 @@ echo -e "\n"
 echo "Testing Database Creation Endpoint (keep existing)"
 curl -X POST "${BASE_URL}/api/v1/database/create?remove_existing=false"
 echo -e "\n"
+
+echo "Creates (or recreates) the 'preprocessed_dataset' table with specified columns."
+curl -X POST "${BASE_URL}/api/v1/database/create_preprocessed_table"
+echo -e "\n"

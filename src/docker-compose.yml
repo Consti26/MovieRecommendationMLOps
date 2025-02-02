@@ -1,0 +1,27 @@
+version: '3.9'
+
+services:
+  database:
+    build: ../src/DB_api # Build the DB_api from the DB_api directory
+    container_name: database_container
+    ports:
+      - "8000:8000" # Expose the database API port
+    volumes:
+      - ./DB_api/raw_data:/home/jovyan/DB_api/raw_data
+      - ./DB_api/processed_data:/home/jovyan/DB_api/processed_data
+    environment:
+      - BASE_URL=http://localhost:8000
+    command: |
+      bash -c "source activate conda_env && uvicorn db_api:app --host 0.0.0.0 --port 8000 & curl -X POST http://localhost:8000/api/v1/database/create?remove_existing=true && tail -f /dev/null"
+    # The `tail -f /dev/null` ensures the container stays running after database initialization
+
+  preprocessing:
+    build: ../src/features # Build the Features service
+    container_name: recommendation_container
+    depends_on:
+      - database_container # Ensure the database container is up before starting preprocessing
+    volumes:
+      - ./Features:/app
+    environment:
+      BASE_URL: "http://database:8000"
+    command: python preprocessing_content_based_mlflow.py
