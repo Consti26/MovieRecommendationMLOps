@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 import sqlite3
 import pandas as pd
 from typing import List, Optional
@@ -9,6 +9,9 @@ import kagglehub
 import shutil
 from pydantic import BaseModel
 import json
+
+from typing import List
+
 
 # Load environment variables from a .env file
 load_dotenv()
@@ -31,6 +34,13 @@ class Rating(BaseModel):
     movieId: int
     rating: float
     timestamp: int
+
+class PreprocessedMovie(BaseModel):
+    movieId: int
+    title_year: str
+    genres: str
+    title: str
+    year: int
 
 def dict_factory(cursor, row):
     d = {}
@@ -107,7 +117,8 @@ def stream_data(db_path: str, query: str, params: List = None):
 def read_movies():
     """Endpoint to fetch all movies."""
     query = "SELECT * FROM movies"
-    return StreamingResponse(stream_data(DATABASE_PATH, query), media_type="application/json")
+    #return StreamingResponse(stream_data(DATABASE_PATH, query), media_type="application/json")
+    return JSONResponse(content=movies)
 
 @app.get("/api/v1/ratings", response_class=StreamingResponse)
 def read_ratings():
@@ -225,5 +236,53 @@ def add_ratings_batch(ratings: List[Rating]):
         conn.commit()
         conn.close()
         return {"message": "Ratings added successfully!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/database/create_preprocessed_table")
+def create_preprocessed_table():
+    """Creates (or recreates) the 'preprocessed_dataset' table with specified columns."""
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+
+        # Drop table if it already exists
+        cursor.execute("DROP TABLE IF EXISTS preprocessed_dataset")
+
+        # Create new table with required columns
+        cursor.execute("""
+            CREATE TABLE preprocessed_dataset (
+                movieId INTEGER PRIMARY KEY,
+                title_year TEXT,
+                genres TEXT,
+                title TEXT,
+                year INTEGER
+            )
+        """)
+
+        conn.commit()
+        conn.close()
+        return {"message": "Table 'preprocessed_dataset' created successfully!"}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/database/insert_preprocessed_data")
+def insert_preprocessed_data(data: List[PreprocessedMovie]):
+    """Receives a list of preprocessed movie records and inserts them into the database."""
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+
+        # Insert data into the table
+        cursor.executemany("""
+            INSERT INTO preprocessed_dataset (movieId, title_year, genres, title, year)
+            VALUES (?, ?, ?, ?, ?)
+        """, [(d.movieId, d.title_year, d.genres, d.title, d.year) for d in data])
+
+        conn.commit()
+        conn.close()
+        return {"message": "Data inserted into 'preprocessed_dataset' successfully!"}
+    
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

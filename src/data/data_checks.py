@@ -1,6 +1,30 @@
 import pandas as pd
 import os
 
+def get_data_from_api():
+    """Fetch data from the database API."""
+    BASE_URL = "http://localhost:8000" 
+    url = f"{BASE_URL}/api/v1/movies" 
+    response = requests.get(url, stream=True)  # Stream the response
+    
+    if response.status_code == 200:
+        # Initialize an empty list to collect rows of data
+        data = []
+        
+        # Stream the response and process each chunk
+        for line in response.iter_lines(decode_unicode=True):
+            if line:  # Make sure the line is not empty
+                try:
+                    # Parse each line as a JSON object
+                    row = eval(line)  # Convert line to a dictionary (this may be a safer option than eval in some cases)
+                    data.append(row)
+                except Exception as e:
+                    print(f"Error parsing line: {line}, Error: {e}")
+        
+        # Convert the collected data into a pandas DataFrame
+        return pd.DataFrame(data)
+    else:
+        raise Exception(f"API request failed: {response.status_code}, {response.text}")
 
 def check_movie_data(file_path):
     """
@@ -82,9 +106,10 @@ def main():
     """
     Main function to check raw data files.
     """
-    raw_data_folder = '../raw_data/'
-    movie_file = os.path.join(raw_data_folder, "movie.csv")
-    rating_file = os.path.join(raw_data_folder, "rating.csv")
+    movie_file = get_data_from_api()
+    #raw_data_folder = '../raw_data/'
+    #movie_file = os.path.join(raw_data_folder, "movie.csv")
+    #rating_file = os.path.join(raw_data_folder, "rating.csv")
 
     # Check movie.csv
     if os.path.exists(movie_file):
@@ -93,10 +118,10 @@ def main():
         print(f"File not found: {movie_file}")
 
     # Check rating.csv
-    if os.path.exists(rating_file):
-        check_rating_data(rating_file)
-    else:
-        print(f"File not found: {rating_file}")
+    #if os.path.exists(rating_file):
+    #    check_rating_data(rating_file)
+    #else:
+    #    print(f"File not found: {rating_file}")
 
 
 if __name__ == "__main__":

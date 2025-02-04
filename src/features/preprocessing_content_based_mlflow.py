@@ -2,6 +2,32 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import mlflow
+import requests
+
+def get_data_from_api():
+    """Fetch data from the database API."""
+    BASE_URL = "http://localhost:8000" 
+    url = f"{BASE_URL}/api/v1/movies" 
+    response = requests.get(url, stream=True)  # Stream the response
+    
+    if response.status_code == 200:
+        # Initialize an empty list to collect rows of data
+        data = []
+        
+        # Stream the response and process each chunk
+        for line in response.iter_lines(decode_unicode=True):
+            if line:  # Make sure the line is not empty
+                try:
+                    # Parse each line as a JSON object
+                    row = eval(line)  # Convert line to a dictionary (this may be a safer option than eval in some cases)
+                    data.append(row)
+                except Exception as e:
+                    print(f"Error parsing line: {line}, Error: {e}")
+        
+        # Convert the collected data into a pandas DataFrame
+        return pd.DataFrame(data)
+    else:
+        raise Exception(f"API request failed: {response.status_code}, {response.text}")
 
 def extract_title(title):
     """
@@ -98,15 +124,17 @@ def main():
     with mlflow.start_run():
         try:
             # Apply functions
-            movie_path = '../raw_data/movie.csv'
-            movies = pd.read_csv(movie_path)
+            movies = get_data_from_api()
+            #movie_path = '../raw_data/movie.csv'
+            #movies = pd.read_csv(movie_path)
             movies.rename(columns={'title':'title_year'}, inplace=True)
             movies['title_year'] = movies['title_year'].apply(lambda x: x.strip()) # remove spaces in tilte_year
             movies['title'] = movies['title_year'].apply(extract_title)
             movies['year'] = movies['title_year'].apply(extract_year)
             movies = filter_movies_with_genres(movies)
             movies = clean_genre_column(movies)
-            movies.to_csv('../processed_data/df_content_filtering.csv', sep = ',')
+            print(movies.head()) 
+            #movies.to_csv('../processed_data/df_content_filtering.csv', sep = ',')
 
             # Log parameters
             #mlflow.log_param("Similar_movie", movie_title)
