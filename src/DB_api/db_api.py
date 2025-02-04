@@ -9,7 +9,9 @@ import kagglehub
 import shutil
 from pydantic import BaseModel
 import json
+
 from typing import List
+
 
 # Load environment variables from a .env file
 load_dotenv()
@@ -108,8 +110,7 @@ def stream_data(db_path: str, query: str, params: List = None):
 
     for chunk in pd.read_sql_query(query, conn, params=params, chunksize=chunksize):
         for row in chunk.to_dict(orient='records'):
-            yield f"{row}\n"
-
+            yield json.dumps(row) + "\n"
     conn.close()
 
 @app.get("/api/v1/movies", response_class=StreamingResponse)
