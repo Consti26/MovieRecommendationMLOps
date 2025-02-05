@@ -85,3 +85,33 @@ echo -e "\n"
 echo "Creates (or recreates) the 'preprocessed_dataset' table with specified columns."
 curl -X POST "${BASE_URL}/api/v1/database/create_preprocessed_table"
 echo -e "\n"
+
+# Test database preprocessed_dataset
+echo "Create pre processed dataset table"
+curl -X POST http://localhost:8000/api/v1/database/create_preprocessed_table
+echo -e "\n"
+
+echo "Feed pre processed dataset table"
+curl -X POST http://localhost:8000/api/v1/database/insert_preprocessed_data \
+     -H "Content-Type: application/json" \
+     -d '[
+            {
+                "movieId": 1,
+                "title_year": "Toy Story (1995)",
+                "genres": "Adventure Animation Children Comedy Fantasy",
+                "title": "Toy Story",
+                "year": 1995
+            },
+            {
+                "movieId": 2,
+                "title_year": "Jumanji (1995)",
+                "genres": "Adventure Children Fantasy",
+                "title": "Jumanji",
+                "year": 1995
+            }
+        ]'
+echo -e "\n"
+
+echo "Feed pre processed dataset table"
+curl -X GET "http://localhost:8000/api/v1/preprocessed_dataset"
+echo -e "\n"
