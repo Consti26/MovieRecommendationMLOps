@@ -2,8 +2,10 @@ version: '3.9'
 
 services:
   database:
-    build: ../src/DB_api # Build the DB_api from the DB_api directory
-    container_name: database_container
+    build: # Build the DB_api from the DB_api directory
+      context: ./DB_api
+      dockerfile: dockerfile
+    container_name: db_api
     ports:
       - "8000:8000" # Expose the database API port
     volumes:
@@ -11,17 +13,69 @@ services:
       - ./DB_api/processed_data:/home/jovyan/DB_api/processed_data
     environment:
       - BASE_URL=http://localhost:8000
+    env_file:
+      - ./DB_api/.env_git
+    networks: 
+      - movie_recommendation_network
     command: |
-      bash -c "source activate conda_env && uvicorn db_api:app --host 0.0.0.0 --port 8000 & curl -X POST http://localhost:8000/api/v1/database/create?remove_existing=true && tail -f /dev/null"
+      bash -c "source activate conda_env && uvicorn db_api:app --host 0.0.0.0 --port 8000"
+    # bash -c "source activate conda_env && uvicorn db_api:app --host 0.0.0.0 --port 8000 & curl -X POST http://localhost:8000/api/v1/database/create?remove_existing=true && tail -f /dev/null"
+    
     # The `tail -f /dev/null` ensures the container stays running after database initialization
-
-  preprocessing:
-    build: ../src/features # Build the Features service
-    container_name: recommendation_container
-    depends_on:
-      - database_container # Ensure the database container is up before starting preprocessing
+  mlflow:
+    build: # Build the DB_api from the DB_api directory
+      context: ./models/MLFlow
+      dockerfile: dockerfile
+    container_name: mlflow
     volumes:
-      - ./Features:/app
-    environment:
-      BASE_URL: "http://database:8000"
-    command: python preprocessing_content_based_mlflow.py
+      - mlflow_data:/MLFlow
+    env_file:
+      - ./models/MLFlow/.env_git
+    ports:
+      - "5000:5000"
+    networks:
+      - movie_recommendation_network
+    restart: always
+  # preprocessing:
+  #   build: # Build the DB_api from the DB_api directory
+  #     context: ./features
+  #     dockerfile: dockerfile
+  #   #build: ../src/features # Build the Features service
+  #   container_name: recommendation_container
+  #   depends_on:
+  #     - database # Ensure the database container is up before starting preprocessing
+  #   volumes:
+  #     - ./Features:/app
+  #   networks: 
+  #     - movie_recommendation_network
+  #   environment:
+  #     BASE_URL: "http://database:8000"
+  #   command: python preprocessing_content_based_mlflow.py
+  training:
+    build: # Build the DB_api from the DB_api directory
+      context: ./models/trainAPI
+      dockerfile: dockerfile
+    #build: ../src/features # Build the Features service
+    container_name: training_api
+    depends_on:
+      - database
+      - mlflow
+    volumes:
+      - mlflow_data:/MLFlow
+    env_file:
+      - ./models/trainAPI/.env_git
+    ports:
+      - "8080:8080"
+    networks:
+      - movie_recommendation_network
+    command:  bash -c "source activate conda_env && uvicorn trainAPIcontent:app --host 0.0.0.0 --port 8080"
+  
+volumes:
+  mlflow_data:
+    driver_opts:
+      type: none
+      device: ./models/MLFlow/workdir
+      o: bind
+
+networks:
+  movie_recommendation_network:
