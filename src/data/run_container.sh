@@ -8,10 +8,10 @@ PROCESSED_DATA_PATH=$(realpath "$SCRIPT_DIR/processed_data")
 RAW_DATA_PATH=$(realpath "$SCRIPT_DIR/raw_data")
 
 docker container run \
- --name db_api\
- --volume "$PROCESSED_DATA_PATH:/home/jovyan/DB_api/processed_data" \
- --volume "$RAW_DATA_PATH:/home/jovyan/DB_api/raw_data" \
+ --name api_database\
+ --volume "$PROCESSED_DATA_PATH:/home/api_database/processed_data" \
+ --volume "$RAW_DATA_PATH:/home/api_database/raw_data" \
  --env-file "$SCRIPT_DIR/.env_git"\
  -p 8000:8000\
  --rm\
- db_api:latest
+ api_database:latest

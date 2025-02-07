@@ -20,4 +20,4 @@ echo "Processed Data Path: $PROCESSED_DATA_PATH"
 echo "Raw Data Path: $RAW_DATA_PATH"
 
 # Build Docker image
-docker image build . -t db_api:latest
+docker image build . -t api_database:latest

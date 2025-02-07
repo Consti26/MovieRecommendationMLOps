@@ -15,27 +15,27 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
 # Get the paths from environment variables
-PREPROCESSING_API = os.getenv('PREPROCESSING_API', 'db_api')
-PREPROCESSING_PORT = int(os.getenv('PREPROCESSING_PORT', '8000'))
-MLFLOW_CONTAINER = os.getenv('MLFLOW_CONTAINER', 'mlflow')
+DATABASE_CONTAINER = os.getenv('DATABASE_CONTAINER', 'database_container')
+DATABASE_PORT = int(os.getenv('DATABASE_PORT', '8000'))
+MLFLOW_CONTAINER = os.getenv('MLFLOW_CONTAINER', 'mlflow_container')
 MLFLOW_PORT = int(os.getenv('MLFLOW_PORT', '5000'))
 
 try:
     # DNS-Lookup durchführen
-    preprocessing_address = socket.gethostbyname(PREPROCESSING_API)
-    PREPROCESSING_URI = 'http://{address}:{port}'.format(address=preprocessing_address, port=PREPROCESSING_PORT )
-    print(f"Die URI von {PREPROCESSING_API} ist: {PREPROCESSING_URI}")
+    DATABASE_ADDRESS = socket.gethostbyname(DATABASE_CONTAINER)
+    API_DATABASE_URL = 'http://{address}:{port}'.format(address=DATABASE_ADDRESS, port=DATABASE_PORT )
+    print(f"Die URI von {DATABASE_CONTAINER} ist: {API_DATABASE_URL}")
 except socket.gaierror as e:
-    PREPROCESSING_URI = 'http://localhost:8000'
-    print(f"Fehler beim Abrufen der IP-Adresse für {PREPROCESSING_API}: {e}")
+    API_DATABASE_URL = 'http://localhost:8000'
+    print(f"Fehler beim Abrufen der IP-Adresse für {API_DATABASE_URL}: {e}")
 
 try:
     # DNS-Lookup durchführen MLFlow
     mlflow_address = socket.gethostbyname(MLFLOW_CONTAINER)
-    MLFLOW_URI = 'http://{address}:{port}'.format(address=mlflow_address, port=MLFLOW_PORT )
-    print(f"Die URI von {MLFLOW_CONTAINER} ist: {MLFLOW_URI}")
+    MLFLOW_URL = 'http://{address}:{port}'.format(address=mlflow_address, port=MLFLOW_PORT )
+    print(f"Die URI von {MLFLOW_CONTAINER} ist: {MLFLOW_URL}")
 except socket.gaierror as e:
-    MLFLOW_URI = 'http://localhost:5000'
+    MLFLOW_URL = 'http://localhost:5000'
     print(f"Fehler beim Abrufen der IP-Adresse für {MLFLOW_CONTAINER}: {e}")
 
 
@@ -46,12 +46,12 @@ class TrainingParams(BaseModel):
     max_df: Optional[float] = 0.95
     min_df: Optional[int] = 2
     ngram_range: Optional[tuple] = (1, 2)
-    stop_words:  Optional[str] = None
+    stop_words:  Optional[str] = "english"
     sample_fraction: Optional[float] = 1.0
 
 def fetch_preprocessed_data(api_uri):
     # Send GET request to the API
-    response = requests.get('{uri}/api/v1/movies'.format(uri=api_uri))
+    response = requests.get('{uri}/api/v1/preprocessed_dataset'.format(uri=api_uri))
 
     # Check if the request was successful
     if response.status_code == 200:
@@ -109,7 +109,7 @@ def train_model(**tfidfargs):
     ngram_range = tfidfargs.get("ngram_range",(1, 2))
     sample_fraction = tfidfargs.pop("sample_fraction",1 )
     
-    movie_data = fetch_preprocessed_data(PREPROCESSING_URI)
+    movie_data = fetch_preprocessed_data(API_DATABASE_URL)
     movie_data = movie_data.sample(frac=sample_fraction)
     
     with mlflow.start_run() as run:
@@ -146,12 +146,16 @@ def home():
 @app.post("/train_content_filter")
 def train_content_based_filter(params: TrainingParams):
 # Set the MLFlow tracking URI
-    mlflow.set_tracking_uri(MLFLOW_URI)
+    mlflow.set_tracking_uri(MLFLOW_URL)
 
     # Set the experiment name
     mlflow.set_experiment("Train_Contentbased_Filter")
+    file = '/mlflow/api_train_content_sees_this'
+    with open(file, 'w') as fp:
+        pass
 
     try:
         train_model(**params.dict())
+        return {"message": "Training finished successfully!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

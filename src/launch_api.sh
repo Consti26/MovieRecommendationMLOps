@@ -2,7 +2,7 @@
 # Make sure the script directory is exported as an environment variable
 export SCRIPT_DIR=$(dirname "$(realpath "$0")")
 
-Run Docker Compose
+# Run Docker Compose
 docker system prune -f -a
 docker build prune -f
 docker image prune -f

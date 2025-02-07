@@ -1,0 +1,8 @@
+fastapi
+pandas
+kagglehub
+httptools
+uvloop
+uvicorn
+pydantic
+python-dotenv

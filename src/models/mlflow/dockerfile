@@ -7,13 +7,16 @@ RUN apt-get update && apt-get install -y sudo
 # Create a non-root user and group
 RUN groupadd -r mlflow && useradd -r -m -g mlflow mlflow
 
-# Create the /MLFlow directory and set the user permissions
-RUN mkdir -p /MLFlow /MLFlow/conda_envs /MLFlow/conda_pkgs
-RUN chown -R mlflow:mlflow /MLFlow /MLFlow/conda_envs /MLFlow/conda_pkgs
-RUN chmod -R 777 /MLFlow /MLFlow/conda_envs /MLFlow/conda_pkgs
+# Create the /mlflow directory and set the user permissions
+RUN mkdir -p /mlflow /mlflow/conda_envs /mlflow/conda_pkgs /mlflow/artifacts
+RUN chown -R mlflow:mlflow /mlflow /mlflow/conda_envs /mlflow/conda_pkgs /mlflow/artifacts
+RUN chmod -R 777 /mlflow /mlflow/conda_envs /mlflow/conda_pkgs /mlflow/artifacts
 
-# Set the working directory to /MLFlow
-WORKDIR /MLFlow
+RUN touch /mlflow/mlflow_sees_this_dir
+
+
+# Set the working directory to /mlflow
+WORKDIR /mlflow
 
 # Switch to the non-root user
 USER mlflow
@@ -23,8 +26,8 @@ COPY environment.yml .
 COPY .env_git .
 
 # Configure Conda to use the custom directories
-RUN conda config --add envs_dirs /MLFlow/conda_envs
-RUN conda config --add pkgs_dirs /MLFlow/conda_pkgs
+RUN conda config --add envs_dirs /mlflow/conda_envs
+RUN conda config --add pkgs_dirs /mlflow/conda_pkgs
 
 # Create the conda environment using the custom directories
 RUN conda env create -f environment.yml
@@ -36,4 +39,4 @@ SHELL ["conda", "run", "-n", "mlflow_env", "/bin/bash", "-c"]
 EXPOSE 5000
 
 # Set the entry point to run the MLFlow server as the non-root user
-ENTRYPOINT ["conda", "run", "-n", "mlflow_env", "mlflow", "server", "--host", "0.0.0.0"]
+ENTRYPOINT ["conda", "run", "-n", "mlflow_env", "mlflow", "server", "--host", "0.0.0.0", "--default-artifact-root", "/mlflow/artifacts" ]
