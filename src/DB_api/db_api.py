@@ -285,3 +285,9 @@ def insert_preprocessed_data(data: List[PreprocessedMovie]):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/api/v1/preprocessed_dataset", response_class=StreamingResponse)
+def read_preprocessed_dataset():
+    """Endpoint to fetch the preprocessed dataset."""
+    query = "SELECT * FROM preprocessed_dataset"
+    return StreamingResponse(stream_data(DATABASE_PATH, query), media_type="application/json")

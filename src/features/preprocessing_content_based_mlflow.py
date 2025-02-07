@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import mlflow
 import requests
+import os 
 
 def get_data_from_api():
     """Fetch data from the database API."""
@@ -28,6 +29,43 @@ def get_data_from_api():
         return pd.DataFrame(data)
     else:
         raise Exception(f"API request failed: {response.status_code}, {response.text}")
+
+def check_movie_data(df):
+    """
+    Checks if the movie DataFrame meets the expected format and constraints.
+    """
+    try:
+        print("Checking movie DataFrame...")
+
+        # Check if DataFrame is empty
+        if df.empty:
+            raise ValueError("DataFrame is empty")
+
+        # Check column names
+        expected_columns = ["movieId", "title", "genres"]
+        if list(df.columns) != expected_columns:
+            raise ValueError(f"Columns do not match expected format: {expected_columns}")
+
+        # Check if `movieId` is unique
+        if df["movieId"].duplicated().any():
+            raise ValueError("Duplicate movieId values found in the DataFrame")
+
+        # Check if `movieId` is an integer
+        if not pd.api.types.is_integer_dtype(df["movieId"]):
+            raise ValueError("movieId column must contain integers only")
+
+        # Check for missing values
+        #if df.isnull().any().any():
+        #    raise ValueError("The DataFrame contains missing values")
+
+        # Check if genres are non-empty strings
+        if not df["genres"].apply(lambda x: isinstance(x, str) and len(x.strip()) > 0).all():
+            raise ValueError("Invalid genres found in the DataFrame")
+
+        print("Movie DataFrame passed all checks!\n")
+
+    except Exception as e:
+        print(f"Error in movie DataFrame: {e}")
 
 def extract_title(title):
     """
@@ -117,24 +155,64 @@ def clean_genre_column(movies):
     
     return movies
 
+def drop_nan_values(movies):
+    """
+    Drops rows with any null values from the DataFrame.
+    
+    Args:
+    - df (pd.DataFrame): Input DataFrame
+    
+    Returns:
+    - pd.DataFrame: DataFrame without null values
+    """
+    return movies.dropna()
+
 def main():
     # Start MLflow experiment
     mlflow.set_experiment("Content_based_preprocessing")
 
     with mlflow.start_run():
         try:
-            # Apply functions
+            # Get data from movie.csv 
             movies = get_data_from_api()
-            #movie_path = '../raw_data/movie.csv'
-            #movies = pd.read_csv(movie_path)
+
+            # Check movie.csv
+            if not movies.empty:
+                check_movie_data(movies)
+            else:
+                print(f"File not found: {movies}")
+
+            # Apply pre processing  
             movies.rename(columns={'title':'title_year'}, inplace=True)
             movies['title_year'] = movies['title_year'].apply(lambda x: x.strip()) # remove spaces in tilte_year
             movies['title'] = movies['title_year'].apply(extract_title)
             movies['year'] = movies['title_year'].apply(extract_year)
             movies = filter_movies_with_genres(movies)
             movies = clean_genre_column(movies)
-            print(movies.head()) 
-            #movies.to_csv('../processed_data/df_content_filtering.csv', sep = ',')
+            movies = drop_nan_values(movies)
+            print("Preprocessed dataset has been created. Saving it into the db ..")
+
+            # Create the table in the database
+            BASE_URL="http://localhost:8000"
+            CREATE_TABLE_URL = f"{BASE_URL}/api/v1/database/create_preprocessed_table"
+            INSERT_DATA_URL = f"{BASE_URL}/api/v1/database/insert_preprocessed_data"
+            response = requests.post(CREATE_TABLE_URL)
+            if response.status_code == 200:
+                print("✅ Table created successfully!")
+            else:
+                print(f"❌ Error creating table: {response.text}")
+                exit()
+
+            # Convert DataFrame to JSON format expected by the API
+            movies_json = movies.to_dict(orient="records")  # List of dictionaries
+
+            # Send data to API for insertion
+            response = requests.post(INSERT_DATA_URL, json=movies_json)
+
+            if response.status_code == 200:
+                print("✅ Data inserted successfully!")
+            else:
+                print(f"❌ Error inserting data: {response.text}")
 
             # Log parameters
             #mlflow.log_param("Similar_movie", movie_title)
@@ -148,7 +226,7 @@ def main():
             #mlflow.log_artifact("recommendation.csv")
 
         except Exception as e:
-            print(f"Error during content based preprocessing run: {e}")
+            print(f"Error during preprocessing run: {e}")
             raise
 
 if __name__ == "__main__":
