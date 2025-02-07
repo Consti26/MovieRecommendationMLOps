@@ -1,0 +1,39 @@
+# Use Miniconda as the base image
+FROM continuumio/miniconda3
+RUN conda update conda
+# Install necessary dependencies for user management
+RUN apt-get update && apt-get install -y sudo
+
+# Create a non-root user and group
+RUN groupadd -r mlflow && useradd -r -m -g mlflow mlflow
+
+# Create the /MLFlow directory and set the user permissions
+RUN mkdir -p /MLFlow /MLFlow/conda_envs /MLFlow/conda_pkgs
+RUN chown -R mlflow:mlflow /MLFlow /MLFlow/conda_envs /MLFlow/conda_pkgs
+RUN chmod -R 777 /MLFlow /MLFlow/conda_envs /MLFlow/conda_pkgs
+
+# Set the working directory to /MLFlow
+WORKDIR /MLFlow
+
+# Switch to the non-root user
+USER mlflow
+
+# Copy the environment.yml file to the container
+COPY environment.yml .
+COPY .env_git .
+
+# Configure Conda to use the custom directories
+RUN conda config --add envs_dirs /MLFlow/conda_envs
+RUN conda config --add pkgs_dirs /MLFlow/conda_pkgs
+
+# Create the conda environment using the custom directories
+RUN conda env create -f environment.yml
+
+# Make RUN commands use the new environment
+SHELL ["conda", "run", "-n", "mlflow_env", "/bin/bash", "-c"]
+
+# Expose the port for the MLFlow server
+EXPOSE 5000
+
+# Set the entry point to run the MLFlow server as the non-root user
+ENTRYPOINT ["conda", "run", "-n", "mlflow_env", "mlflow", "server", "--host", "0.0.0.0"]

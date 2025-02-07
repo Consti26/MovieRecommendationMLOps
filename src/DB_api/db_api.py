@@ -118,7 +118,6 @@ def read_movies():
     """Endpoint to fetch all movies."""
     query = "SELECT * FROM movies"
     return StreamingResponse(stream_data(DATABASE_PATH, query), media_type="application/json")
-    #return JSONResponse(content=movies)
 
 @app.get("/api/v1/ratings", response_class=StreamingResponse)
 def read_ratings():
