@@ -10,7 +10,7 @@ services:
       - "8000:8000" # Expose the database API port
     volumes:
       - database_raw_volume:/home/api_database/raw_data
-      - database_processed_volume:/api_database/processed_data
+      - database_processed_volume:/home/api_database/processed_data
     environment:
       - BASE_URL=http://localhost:8000
     env_file:
@@ -42,8 +42,8 @@ services:
       dockerfile: dockerfile
     #build: ../src/features # Build the Features service
     container_name: preprocess_container
-    depends_on:
-      - database # Ensure the database container is up before starting preprocessing
+    # depends_on:
+    #   - database # Ensure the database container is up before starting preprocessing
     # volumes:
     #   - ./Features:/app
     networks: 
@@ -52,7 +52,7 @@ services:
       - "9000:9000"
     environment:
       BASE_URL: "http://database:8000"
-  #  command: python preprocessing_content_based_mlflow.py
+  # command: python preprocessing_content_based_mlflow.py
   training:
     build: 
       context: ./models/training

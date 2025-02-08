@@ -92,6 +92,7 @@ def create_db_from_csv(dataset_path: str, db_path: str, remove_existing: bool = 
         file_path = os.path.join(dataset_path, file_name)
         for chunk in pd.read_csv(file_path, chunksize=chunksize):
             chunk.to_sql(table_name, conn, if_exists='append', index=False)
+        os.remove(os.path.join(dataset_path, file_name))
     
     conn.close()
 
