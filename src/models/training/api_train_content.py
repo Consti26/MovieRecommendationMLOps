@@ -9,9 +9,9 @@ import socket
 import os
 import json
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
 # Get the paths from environment variables
@@ -39,36 +39,45 @@ except socket.gaierror as e:
     print(f"Fehler beim Abrufen der IP-Adresse für {MLFLOW_CONTAINER}: {e}")
 
 
-app = FastAPI()
+class Artifact(BaseModel):
+    path: str
+    is_dir: bool
+
+class DisplayArtifactsParams(BaseModel):
+    run_id: str
+
+class ModelParams(BaseModel):
+    experiment_name: str
+    model_name: str
+    run_id: Optional[str] = None
+    tags: Optional[str] = None
+    selected_index: Optional[int] = None
+
+class ManageTagsParams(BaseModel):
+    model_name: str
+    version: Optional[str] = None
+    action: str
+    tag_key: Optional[str] = None
+    tag_value: Optional[str] = None
+
+
+
+class TFIDFArgs(BaseModel):
+    stop_words: Optional[str] = 'english'
+    max_features: Optional[int] = 10000
+    max_df: Optional[float] = 1.0
+    min_df: Optional[int] = 1
+    ngram_range: Optional[tuple] = (1, 2)
+    
+
+class TrainingLabels(BaseModel):
+    experiment_name: Optional[str] = "Train_Contentbased_Filter"
+    model_name: Optional[str] = "contentbased_filter"
 
 class TrainingParams(BaseModel):
-    max_features: Optional[int] = 1000
-    max_df: Optional[float] = 0.95
-    min_df: Optional[int] = 2
-    ngram_range: Optional[tuple] = (1, 2)
-    stop_words:  Optional[str] = "english"
-    sample_fraction: Optional[float] = 1.0
-
-def fetch_preprocessed_data(api_uri):
-    # Send GET request to the API
-    response = requests.get('{uri}/api/v1/preprocessed_dataset'.format(uri=api_uri))
-
-    # Check if the request was successful
-    if response.status_code == 200:
-        try:
-            # Parse each line of JSON response and accumulate in a list
-            data = [json.loads(line) for line in response.content.splitlines()]
-
-            # Convert the list of dictionaries to a Pandas DataFrame
-            df = pd.DataFrame(data)
-
-            # Display the DataFrame
-            return df
-        except requests.exceptions.JSONDecodeError:
-            print("Error: Failed to parse JSON response.")
-    else:
-        print(f"Error: {response.status_code}")
-        
+    labels: TrainingLabels
+    tfidf_args: TFIDFArgs
+    sample_fraction: Optional[float] = 0.1
 
 
 def compute_tfidf_similarity(movies, column_name='genres',  **tfidfargs):
@@ -100,41 +109,239 @@ def compute_tfidf_similarity(movies, column_name='genres',  **tfidfargs):
     
     return tfidf_vectorizer, feature_names_with_index, sim_matrix
 
-def train_model(**tfidfargs):
+
+    
+class MLFlowAPI:
+    def __init__(self, tracking_uri: str = MLFLOW_URL, database_uri: str = "http://your-api-database-url"):
+        self.tracking_uri = tracking_uri
+        self.database_uri = database_uri
+        mlflow.set_tracking_uri(self.tracking_uri)
+        self.client = mlflow.tracking.MlflowClient()
         
-    stop_words = tfidfargs.get("stop_words", 'english')
-    max_features = tfidfargs.get("max_features", 10000)
-    max_df = tfidfargs.get("max_df", 1)
-    min_df = tfidfargs.get("min_df", 1)
-    ngram_range = tfidfargs.get("ngram_range",(1, 2))
-    sample_fraction = tfidfargs.pop("sample_fraction",1 )
     
-    movie_data = fetch_preprocessed_data(API_DATABASE_URL)
-    movie_data = movie_data.sample(frac=sample_fraction)
+    def list_experiments(self, experiment_name: Optional[str] = None):
+        try:
+            if experiment_name:
+                experiment = self.client.get_experiment_by_name(experiment_name)
+                if experiment is None:
+                    raise HTTPException(status_code=404, detail=f"Experiment '{experiment_name}' not found.")
+                experiments = [experiment]
+            else:
+                experiments = self.client.search_experiments()
+
+            experiments_info = []
+            for experiment in experiments:
+                experiment_info = {
+                    "experiment_id": experiment.experiment_id,
+                    "experiment_name": experiment.name,
+                    "runs": []
+                }
+                runs = self.client.search_runs(experiment_ids=[experiment.experiment_id])
+                for run in runs:
+                    run_info = {
+                        "run_id": run.info.run_id,
+                        "status": run.info.status,
+                        "start_time": run.info.start_time,
+                        "end_time": run.info.end_time
+                    }
+                    experiment_info["runs"].append(run_info)
+                experiments_info.append(experiment_info)
+
+            return {"experiments": experiments_info}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
     
-    with mlflow.start_run() as run:
-        # Log parameters
-        mlflow.log_param("max_features", max_features)
-        mlflow.log_param("max_df", max_df)
-        mlflow.log_param("min_df", min_df)
-        mlflow.log_param("ngram_range", ngram_range)
-        mlflow.log_param("stop_words", stop_words)
-        mlflow.log_param("sample_fraction", sample_fraction)
+    def display_artifacts(self, params: DisplayArtifactsParams):
+        try:
+            artifacts = self.client.list_artifacts(params.run_id)
+            artifacts_info = []
 
-        tfidf_vectorizer,feature_names_with_index, sim_matrix = compute_tfidf_similarity(movie_data,  column_name='genres', **tfidfargs)
+            for idx, artifact in enumerate(artifacts, 1):
+                artifact_info = {
+                    "index": idx,
+                    "path": artifact.path,
+                    "type": "directory" if artifact.is_dir else "file",
+                    "nested": []
+                }
+                if artifact.is_dir:
+                    nested_artifacts = self.client.list_artifacts(params.run_id, artifact.path)
+                    for nested in nested_artifacts:
+                        artifact_info["nested"].append(nested.path)
+                artifacts_info.append(artifact_info)
 
-         # Log vocabulary size
-        vocab_size = len(tfidf_vectorizer.vocabulary_)
-        mlflow.log_metric("vocabulary_size", vocab_size)
+            return artifacts_info
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    
+    def get_model_uri(self, experiment_name: str, selected_index: int, run_id: Optional[str] = None):
+        try:
+            experiment = self.client.get_experiment_by_name(experiment_name)
+            if experiment is None:
+                experiments = self.client.search_experiments()
+                available_experiments = [exp.name for exp in experiments]
+                raise Exception(f"Experiment '{experiment_name}' not found. Available experiments: {available_experiments}")
 
-        # Save the similarity matrix to a file
-        np.save("sim_matrix.npy", sim_matrix)
+            if not run_id:
+                runs = self.client.search_runs(
+                    experiment_ids=[experiment.experiment_id],
+                    filter_string="status = 'FINISHED'",
+                    order_by=["start_time DESC"],
+                    max_results=1
+                )
+                if runs.empty:
+                    raise Exception(f"No successful runs found in experiment '{experiment_name}'")
+                run_id = runs.iloc[0].run_id
 
-        # Log the similarity matrix as an artifact
-        mlflow.log_artifact("sim_matrix.npy")
+            artifacts = self.display_artifacts(DisplayArtifactsParams(run_id=run_id))
+            if selected_index == -1:
+                selected_index = len(artifacts)
 
-        # Log the model
-        mlflow.sklearn.log_model(tfidf_vectorizer, "model", registered_model_name="Content_Vectorizer")
+            model_path = self.select_model_path(artifacts, selected_index)
+            model_uri = f"runs:/{run_id}/{model_path}"
+            return {"model_uri": model_uri, "run_id": run_id}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    
+    def select_model_path(self, artifacts: List[dict], selected_index: int) -> str:
+        dirs = [art for art in artifacts if art["type"] == "directory"]
+
+        if not dirs:
+            raise Exception("No directories found in artifacts")
+
+        if len(dirs) == 1:
+            return dirs[0]["path"]
+
+        if 1 <= selected_index <= len(dirs):
+            return dirs[selected_index - 1]["path"]
+        else:
+            raise ValueError(f"Selected index {selected_index} is out of range")
+    
+    def register_model(self, params: ModelParams):
+        try:
+            result = self.get_model_uri(params.experiment_name, params.selected_index if params.selected_index else -1, params.run_id)
+
+            initial_tags = {}
+            if params.tags:
+                for tag_pair in params.tags.split(','):
+                    key, value = tag_pair.split('=')
+                    initial_tags[key.strip()] = value.strip()
+
+            model_details = mlflow.register_model(result["model_uri"], params.model_name)
+
+            if initial_tags:
+                for key, value in initial_tags.items():
+                    self.client.set_registered_model_tag(params.model_name, key, value)
+
+            return {"status": "Model registered successfully", "model_details": {"name": model_details.name, "version": model_details.version}}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    
+    def manage_tags(self, params: ManageTagsParams):
+        try:
+            if params.action == "add" and params.tag_key and params.tag_value:
+                if params.version:
+                    self.client.set_model_version_tag(params.model_name, params.version, params.tag_key, params.tag_value)
+                else:
+                    self.client.set_registered_model_tag(params.model_name, params.tag_key, params.tag_value)
+                return f"Tag {params.tag_key}={params.tag_value} set successfully"
+
+            elif params.action == "delete" and params.tag_key:
+                if params.version:
+                    self.client.delete_model_version_tag(params.model_name, params.version, params.tag_key)
+                else:
+                    self.client.delete_registered_model_tag(params.model_name, params.tag_key)
+                return f"Tag {params.tag_key} deleted successfully"
+
+            elif params.action == "list":
+                if params.version:
+                    model_version = self.client.get_model_version(params.model_name, params.version)
+                    tags = model_version.tags
+                else:
+                    model = self.client.get_registered_model(params.model_name)
+                    tags = model.tags
+                return tags
+
+            else:
+                return "Invalid action or missing parameters"
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    
+    def fetch_preprocessed_data(self):
+        # Send GET request to the API
+        response = requests.get('{uri}/api/v1/preprocessed_dataset'.format(uri=self.database_uri))
+
+        # Check if the request was successful
+        if response.status_code == 200:
+            try:
+                # Parse each line of JSON response and accumulate in a list
+                data = [json.loads(line) for line in response.content.splitlines()]
+
+                # Convert the list of dictionaries to a Pandas DataFrame
+                df = pd.DataFrame(data)
+
+                # Display the DataFrame
+                return df
+            except requests.exceptions.JSONDecodeError:
+                print("Error: Failed to parse JSON response.")
+        else:
+            print(f"Error: {response.status_code}")
+
+    def train_model(self, training_params: TrainingParams):
+        experiment_name = training_params.labels.experiment_name
+        model_name = training_params.labels.model_name
+        tfidfargs = training_params.tfidf_args
+
+        mlflow.set_experiment(experiment_name)
+        try:
+            stop_words = tfidfargs.stop_words
+            max_features = tfidfargs.max_features
+            max_df = tfidfargs.max_df
+            min_df = tfidfargs.min_df
+            ngram_range = tfidfargs.ngram_range
+            sample_fraction = training_params.sample_fraction
+            
+            movie_data = self.fetch_preprocessed_data()
+            movie_data = movie_data.sample(frac=sample_fraction)
+            
+            with mlflow.start_run() as run:
+                # Log parameters
+                mlflow.log_param("max_features", max_features)
+                mlflow.log_param("max_df", max_df)
+                mlflow.log_param("min_df", min_df)
+                mlflow.log_param("ngram_range", ngram_range)
+                mlflow.log_param("stop_words", stop_words)
+                mlflow.log_param("sample_fraction", sample_fraction)
+                tfidf_vectorizer,feature_names_with_index, sim_matrix = compute_tfidf_similarity(movie_data,  column_name='genres', **tfidfargs.__dict__)
+
+                # Log vocabulary size
+                vocab_size = len(tfidf_vectorizer.vocabulary_)
+                mlflow.log_metric("vocabulary_size", vocab_size)
+
+                # Save the similarity matrix to a file
+                np.save("sim_matrix.npy", sim_matrix)
+
+                # Log the similarity matrix as an artifact
+                mlflow.log_artifact("sim_matrix.npy")
+
+                # Save the feature_names_with_index to a file
+                np.save("feature_names_with_index.npy", feature_names_with_index)
+
+                # Log the feature_names_with_index as an artifact
+                mlflow.log_artifact("feature_names_with_index.npy")
+
+                # Log the model
+                mlflow.sklearn.log_model(tfidf_vectorizer, "model", registered_model_name=model_name)
+
+            return {"message": "Training finished successfully!"}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+
+# Create an instance of the API class
+mlflow_api = MLFlowAPI(tracking_uri=MLFLOW_URL, database_uri=API_DATABASE_URL)
+
+# FastAPI app
+app = FastAPI()
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -143,19 +350,23 @@ def home():
     <p>API for training the content based filter.</p>
     '''
 
+@app.get("/list_experiments/")
+def list_experiments_endpoint(experiment_name: Optional[str] = Query(None, description="Name of the experiment to filter")):
+    return mlflow_api.list_experiments(experiment_name)
+
+@app.post("/display_artifacts/")
+def display_artifacts_endpoint(params: DisplayArtifactsParams):
+    return mlflow_api.display_artifacts(params)
+
+@app.post("/register_model/")
+def register_model_endpoint(params: ModelParams):
+    return mlflow_api.register_model(params)
+
+@app.post("/manage_tags/")
+def manage_tags_endpoint(params: ManageTagsParams):
+    return mlflow_api.manage_tags(params)
+
 @app.post("/train_content_filter")
 def train_content_based_filter(params: TrainingParams):
-# Set the MLFlow tracking URI
-    mlflow.set_tracking_uri(MLFLOW_URL)
-
-    # Set the experiment name
-    mlflow.set_experiment("Train_Contentbased_Filter")
-    file = '/mlflow/api_train_content_sees_this'
-    with open(file, 'w') as fp:
-        pass
-
-    try:
-        train_model(**params.dict())
-        return {"message": "Training finished successfully!"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # Set the MLFlow tracking URI
+    mlflow_api.train_model(params)

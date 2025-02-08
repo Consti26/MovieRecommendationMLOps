@@ -13,6 +13,7 @@ export SCRIPT_DIR=$(dirname "$(realpath "$0")")
 # sudo rm -rf ~/.local/share/Trash/*
 # sudo rm -rf ./data/raw_data/*
 # docker system prune -f -a
+# docker volume prune -f
 # docker-compose up --build -d #--no-cache
 # Base URL of the API
 # BASE_URL="http://localhost:8000"
@@ -24,8 +25,7 @@ export SCRIPT_DIR=$(dirname "$(realpath "$0")")
 # Any subsequent Run! #
 #######################
 
-docker volume prune -f
 docker builder prune -f
-docker-compose up -d 
+docker-compose up #-d 
 docker builder prune -f
 
