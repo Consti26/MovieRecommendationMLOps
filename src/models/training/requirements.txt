@@ -1,0 +1,11 @@
+fastapi
+pandas
+numpy
+mlflow==2.9.2
+scikit-learn
+requests
+pydantic
+python-dotenv
+httptools
+uvloop 
+uvicorn

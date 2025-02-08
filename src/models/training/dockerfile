@@ -1,13 +1,17 @@
-FROM continuumio/miniconda3
+FROM python:3.9-slim
+
 WORKDIR /home/api_train_content/
-COPY environment.yml .
+
+# Copy necessary files
+COPY requirements.txt .
 COPY api_train_content.py .
 COPY .env_git .
-RUN conda init bash
-RUN conda env create -f environment.yml
-SHELL ["conda", "run", "-n", "conda_env", "/bin/bash", "-c"]
 
+# Install dependencies using pip
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Expose the application port
 EXPOSE 8080
 
 # Run the application
-CMD ["bash", "-c", "source activate conda_env && uvicorn api_train_content:app --host 0.0.0.0 --port 8080"]
+CMD ["uvicorn", "api_train_content:app", "--host", "0.0.0.0", "--port", "8080"]
