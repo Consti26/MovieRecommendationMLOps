@@ -55,8 +55,8 @@ services:
   # command: python preprocessing_content_based_mlflow.py
   training:
     build: 
-      context: ./models/training
-      dockerfile: dockerfile
+      context: ./models
+      dockerfile: ./training/dockerfile
     #build: ../src/features # Build the Features service
     container_name: training_container
     depends_on:
@@ -68,6 +68,22 @@ services:
       - ./models/training/.env_git
     ports:
       - "8080:8080"
+    networks:
+      - movie_recommendation_network
+  inference:
+    build: 
+      context: ./models
+      dockerfile: ./inference/dockerfile
+    #build: ../src/features # Build the Features service
+    container_name: inference_container
+    depends_on:
+      - mlflow
+    volumes:
+      - mlflow_data:/mlflow
+    env_file:
+      - ./models/inference/.env_git
+    ports:
+      - "8090:8090"
     networks:
       - movie_recommendation_network
   #  command:  bash -c "source activate conda_env && uvicorn trainAPIcontent:app --host 0.0.0.0 --port 8080"

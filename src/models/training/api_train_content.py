@@ -10,6 +10,8 @@ import os
 import json
 from pydantic import BaseModel
 from typing import Optional, List
+from tfidf_vectorizer_model import TfidfVectorizerModel
+from mlflow.models import infer_signature
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
@@ -37,7 +39,6 @@ try:
 except socket.gaierror as e:
     MLFLOW_URL = 'http://localhost:5000'
     print(f"Fehler beim Abrufen der IP-Adresse für {MLFLOW_CONTAINER}: {e}")
-
 
 class Artifact(BaseModel):
     path: str
@@ -227,10 +228,11 @@ class MLFlowAPI:
                     initial_tags[key.strip()] = value.strip()
 
             model_details = mlflow.register_model(result["model_uri"], params.model_name)
+            model_version = model_details.version
 
             if initial_tags:
                 for key, value in initial_tags.items():
-                    self.client.set_registered_model_tag(params.model_name, key, value)
+                    self.client.set_model_version_tag(params.model_name, model_version, key, value)
 
             return {"status": "Model registered successfully", "model_details": {"name": model_details.name, "version": model_details.version}}
         except Exception as e:
@@ -311,31 +313,54 @@ class MLFlowAPI:
                 mlflow.log_param("ngram_range", ngram_range)
                 mlflow.log_param("stop_words", stop_words)
                 mlflow.log_param("sample_fraction", sample_fraction)
-                tfidf_vectorizer,feature_names_with_index, sim_matrix = compute_tfidf_similarity(movie_data,  column_name='genres', **tfidfargs.__dict__)
 
+                # Compute TF-IDF and similarity matrix
+                tfidf_vectorizer = TfidfVectorizer(
+                    max_features=max_features,
+                    max_df=max_df,
+                    min_df=min_df,
+                    ngram_range=ngram_range,
+                    stop_words=stop_words
+                )
+                tfidf_vectorizer_model = TfidfVectorizerModel(tfidf_vectorizer)
+                tfidf_vectorizer_model.fit(movie_data['genres'])
+                # tfidf_matrix = tfidf_vectorizer_model.predict(movie_data['genres'])
+                # sim_matrix = linear_kernel(tfidf_matrix, tfidf_matrix)
+                # feature_names_with_index = list(enumerate(tfidf_vectorizer.get_feature_names_out()))
+                # input_example = {
+                #     "model_input": "Action Adventure"
+                # }
+                                              
+                input_signature = infer_signature(model_input=np.array(["Action Adventure"]), params={"number_of_recommendations":10})
+                print(input_signature)
                 # Log vocabulary size
                 vocab_size = len(tfidf_vectorizer.vocabulary_)
                 mlflow.log_metric("vocabulary_size", vocab_size)
 
-                # Save the similarity matrix to a file
-                np.save("sim_matrix.npy", sim_matrix)
+                # # Save the similarity matrix and feature names to files
+                # np.save("sim_matrix.npy", sim_matrix)
+                # np.save("feature_names_with_index.npy", feature_names_with_index)
 
-                # Log the similarity matrix as an artifact
-                mlflow.log_artifact("sim_matrix.npy")
+                # # Log the similarity matrix, feature names, and movie titles as artifacts
+                # mlflow.log_artifact("sim_matrix.npy")
+                # mlflow.log_artifact("feature_names_with_index.npy")
+                
+                # Save the movie titles
+                movie_data[['title', "genres"]].to_csv("movie_data.csv", index=False , sep=',')
+                mlflow.log_artifact("movie_data.csv")
 
-                # Save the feature_names_with_index to a file
-                np.save("feature_names_with_index.npy", feature_names_with_index)
+                # Log the custom TfidfVectorizer model
+                mlflow.pyfunc.log_model(
+                    artifact_path="model", 
+                    python_model=tfidf_vectorizer_model, 
+                    registered_model_name=model_name,
+                    signature=input_signature
+                    )
 
-                # Log the feature_names_with_index as an artifact
-                mlflow.log_artifact("feature_names_with_index.npy")
-
-                # Log the model
-                mlflow.sklearn.log_model(tfidf_vectorizer, "model", registered_model_name=model_name)
-
-            return {"message": "Training finished successfully!"}
+                return {"message": "Training finished successfully!",
+                        "signature": input_signature}
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
-
 
 # Create an instance of the API class
 mlflow_api = MLFlowAPI(tracking_uri=MLFLOW_URL, database_uri=API_DATABASE_URL)

@@ -1,33 +1,16 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import mlflow
+import mlflow.pyfunc
 import pandas as pd
 import numpy as np
-import mlflow
-import mlflow.sklearn
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import linear_kernel
-import requests
-import socket
 import os
-import json
-from pydantic import BaseModel
-from typing import List, Dict, Optional
+import socket
+from typing import Optional
+from tfidf_vectorizer_model import TfidfVectorizerModel
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
-
-# Get the paths from environment variables
-DATABASE_CONTAINER = os.getenv('DATABASE_CONTAINER', 'database_container')
-DATABASE_PORT = int(os.getenv('DATABASE_PORT', '8000'))
 MLFLOW_CONTAINER = os.getenv('MLFLOW_CONTAINER', 'mlflow_container')
 MLFLOW_PORT = int(os.getenv('MLFLOW_PORT', '5000'))
-
-try:
-    # DNS-Lookup durchführen
-    DATABASE_ADDRESS = socket.gethostbyname(DATABASE_CONTAINER)
-    API_DATABASE_URL = 'http://{address}:{port}'.format(address=DATABASE_ADDRESS, port=DATABASE_PORT )
-    print(f"Die URI von {DATABASE_CONTAINER} ist: {API_DATABASE_URL}")
-except socket.gaierror as e:
-    API_DATABASE_URL = 'http://localhost:8000'
-    print(f"Fehler beim Abrufen der IP-Adresse für {API_DATABASE_URL}: {e}")
 
 try:
     # DNS-Lookup durchführen MLFlow
@@ -38,124 +21,160 @@ except socket.gaierror as e:
     MLFLOW_URL = 'http://localhost:5000'
     print(f"Fehler beim Abrufen der IP-Adresse für {MLFLOW_CONTAINER}: {e}")
 
+class RecommendParams(BaseModel):
+    movie_title: str
+    number_of_recommendations: int
+    genre: Optional[str] = None
 
+class FetchNewModelParams(BaseModel):
+    model_name: Optional[str] = "contentbased_filter"
+    stage: Optional[str] = "production"
+
+class MLFlowRecommendation:
+    def __init__(self, model_name: str, tracking_uri: str, stage: str = "production"):
+        self.model_name = model_name
+        self.tracking_uri = tracking_uri
+        self.stage = stage
+        self.model = None
+        self.run_id = None
+        self.sim_matrix = None
+        self.feature_names_with_index = None
+        self.movie_data = None
+        mlflow.set_tracking_uri(self.tracking_uri)
+        self.client = mlflow.tracking.MlflowClient()
+        self.load_model_by_stage()
+
+    def load_model_by_stage(self):
+        """
+        Load the model and artifacts from MLflow using the stage tag.
+        """
+        model_versions = self.client.search_model_versions(f"name='{self.model_name}'")
+        
+        for version in model_versions:
+            # model_version_info = self.client.get_model_version(self.model_name, version.version)
+            tags = version.tags
+            if tags.get("stage") == self.stage:
+                model_uri = f"models:/{self.model_name}/{version.version}" 
+                try:
+                    self.model = mlflow.pyfunc.load_model(model_uri)
+                except mlflow.exceptions.MlflowException as e:
+                    self.model = None
+                    return {"warning": f"Failed to load model: {e}"}
+                self.run_id = version.run_id
+                # self.sim_matrix = self.load_artifact("sim_matrix.npy")
+                # self.feature_names_with_index = self.load_artifact("feature_names_with_index.npy")
+                artifact_uri = f"runs:/{self.run_id}/movie_data.csv"
+                local_path = mlflow.artifacts.download_artifacts(artifact_uri= artifact_uri)
+                self.movie_data = pd.read_csv(local_path)
+
+                return {"status": "Model loaded successfully"}
+        
+        self.model = None
+        return {"warning": f"Model with stage '{self.stage}' for {self.model_name} not found"}
+
+    def load_artifact(self, artifact_path: str):
+        """
+        Load an artifact from MLflow.
+        """
+        artifact_uri = self.client.get_run(self.run_id).info.artifact_uri
+        local_path = mlflow.artifacts.download_artifacts(artifact_uri, artifact_path)
+        return np.load(local_path, allow_pickle=True)
+
+    def load_movie_titles(self):
+        """
+        Load the movie titles and years used for the model from the artifact.
+        """
+        artifact_uri = self.client.get_run(self.run_id).info.artifact_uri
+        local_path = mlflow.artifacts.download_artifacts(artifact_uri, "movie_titles.csv")
+        df = pd.read_csv(local_path)
+        return df
+
+    def get_index_from_title(self, movie_title: str) -> int:
+        """
+        Get the index of the movie based on the title.
+        """
+        indices = self.movie_data[self.movie_data['title'] == movie_title].index.tolist()
+        if not indices:
+            raise HTTPException(status_code=404, detail=f"Movie titled '{movie_title}' not found")
+        return indices[0]
+
+     # Preprocessing function for genres
+    def preprocess_genres(self, genres: str) -> str:
+        genres = genres.replace('|', ' ')
+        genres = genres.replace('Sci-Fi', 'SciFi')
+        genres = genres.replace('Film-Noir', 'Noir')
+        return genres
+    
+    def recommend_movie(self, movie_title: str, number_of_recommendations: int, genre: Optional[str] = None) -> pd.DataFrame:
+        """
+        Recommends a movie based on the similarity of genres.
+        """
+        # Ensure the model is loaded
+        if not self.model:
+            raise HTTPException(status_code=400, detail="No model is currently loaded")
+
+        # Try to get the movie genres for the given title
+        movie_genres = self.movie_data.loc[self.movie_data['title'] == movie_title, 'genres']
+
+        if movie_genres.empty:
+            if genre:
+                # Use the provided genre if the movie title is not found
+                movie_genres = np.array([self.preprocess_genres(genre)])
+            else:
+                raise HTTPException(status_code=404, detail=f"Movie titled '{movie_title}' not found and no genre provided")
+            
+        # Prepare the input for the model
+        model_input = {"model_input": movie_genres}
+        print(movie_genres)
+        # Generate recommendations using the model
+        top_similar_indices, top_similarities = self.model.predict(movie_genres, params={"number_of_recommendations":number_of_recommendations})
+        print(top_similar_indices)
+        # Retrieve the recommended movie titles, years, and similarity scores
+        recommended_movies = self.movie_data.iloc[top_similar_indices]
+        recommended_movies['similarity_score'] = top_similarities
+
+        recommendations_df = recommended_movies[['title', 'similarity_score']]
+
+        return recommendations_df
+
+    def fetch_new_model(self, model_name: Optional[str] = None, stage: Optional[str] = "production"):
+        """
+        Fetch a new version of the model from MLflow based on the given stage tag.
+        """
+        if model_name:
+            self.model_name = model_name
+        if stage:
+            self.stage = stage
+        self.load_model_by_stage()
+
+# Initialize the FastAPI app and the recommendation system
 app = FastAPI()
+recommendation_system = MLFlowRecommendation("contentbased_filter", MLFLOW_URL)
 
-class TrainingParams(BaseModel):
-    max_features: Optional[int] = 1000
-    max_df: Optional[float] = 0.95
-    min_df: Optional[int] = 2
-    ngram_range: Optional[tuple] = (1, 2)
-    stop_words:  Optional[str] = "english"
-    sample_fraction: Optional[float] = 1.0
-
-def fetch_preprocessed_data(api_uri):
-    # Send GET request to the API
-    response = requests.get('{uri}/api/v1/preprocessed_dataset'.format(uri=api_uri))
-
-    # Check if the request was successful
-    if response.status_code == 200:
-        try:
-            # Parse each line of JSON response and accumulate in a list
-            data = [json.loads(line) for line in response.content.splitlines()]
-
-            # Convert the list of dictionaries to a Pandas DataFrame
-            df = pd.DataFrame(data)
-
-            # Display the DataFrame
-            return df
-        except requests.exceptions.JSONDecodeError:
-            print("Error: Failed to parse JSON response.")
-    else:
-        print(f"Error: {response.status_code}")
-        
-
-
-def compute_tfidf_similarity(movies, column_name='genres',  **tfidfargs):
+@app.post("/recommend_movie/")
+def recommend_movie(params: RecommendParams):
     """
-    Computes the TF-IDF matrix and cosine similarity matrix for a specified column in a DataFrame.
-    
-    Parameters:
-    movies (pd.DataFrame): A pandas DataFrame containing the text data to be analyzed.
-    column_name (str): The name of the column in the DataFrame to apply TF-IDF (default is 'genres').
-    stop_words (str or list): Stop words to be used by the TfidfVectorizer (default is 'english').
-    
-    Returns:
-    tuple: A tuple containing:
-        - feature_names_with_index (list): List of tuples with feature indices and names.
-        - sim_matrix (numpy.ndarray): Cosine similarity matrix computed from the TF-IDF matrix.
+    Recommends a movie based on the similarity of genres using the production model from MLflow.
+    You can specify multiple genres by separating them with whitespaces.
+    It is recommended to specify at least one genre, in case that the title is not contained in the data base.
     """
-    # Create an object for TfidfVectorizer with the specified stop words
-    tfidf_vectorizer = TfidfVectorizer(**tfidfargs)
-    
-    # Apply the TfidfVectorizer to the specified column
-    tfidf_matrix = tfidf_vectorizer.fit_transform(movies[column_name])
-    
-    # Get the feature names from the TfidfVectorizer
-    feature_names = tfidf_vectorizer.get_feature_names_out()
-    feature_names_with_index = list(enumerate(feature_names))
-    
-    # Compute the cosine similarity matrix from the TF-IDF matrix
-    sim_matrix = linear_kernel(tfidf_matrix, tfidf_matrix)
-    
-    return tfidf_vectorizer, feature_names_with_index, sim_matrix
-
-def train_model(**tfidfargs):
-        
-    stop_words = tfidfargs.get("stop_words", 'english')
-    max_features = tfidfargs.get("max_features", 10000)
-    max_df = tfidfargs.get("max_df", 1)
-    min_df = tfidfargs.get("min_df", 1)
-    ngram_range = tfidfargs.get("ngram_range",(1, 2))
-    sample_fraction = tfidfargs.pop("sample_fraction",1 )
-    
-    movie_data = fetch_preprocessed_data(API_DATABASE_URL)
-    movie_data = movie_data.sample(frac=sample_fraction)
-    
-    with mlflow.start_run() as run:
-        # Log parameters
-        mlflow.log_param("max_features", max_features)
-        mlflow.log_param("max_df", max_df)
-        mlflow.log_param("min_df", min_df)
-        mlflow.log_param("ngram_range", ngram_range)
-        mlflow.log_param("stop_words", stop_words)
-        mlflow.log_param("sample_fraction", sample_fraction)
-
-        tfidf_vectorizer,feature_names_with_index, sim_matrix = compute_tfidf_similarity(movie_data,  column_name='genres', **tfidfargs)
-
-         # Log vocabulary size
-        vocab_size = len(tfidf_vectorizer.vocabulary_)
-        mlflow.log_metric("vocabulary_size", vocab_size)
-
-        # Save the similarity matrix to a file
-        np.save("sim_matrix.npy", sim_matrix)
-
-        # Log the similarity matrix as an artifact
-        mlflow.log_artifact("sim_matrix.npy")
-
-        # Log the model
-        mlflow.sklearn.log_model(tfidf_vectorizer, "model", registered_model_name="Content_Vectorizer")
-
-@app.get("/", response_class=HTMLResponse)
-def home():
-    return '''
-    <h1>MovieLens Recommendation API</h1>
-    <p>API for training the content based filter.</p>
-    '''
-
-@app.post("/train_content_filter")
-def train_content_based_filter(params: TrainingParams):
-# Set the MLFlow tracking URI
-    mlflow.set_tracking_uri(MLFLOW_URL)
-
-    # Set the experiment name
-    mlflow.set_experiment("Train_Contentbased_Filter")
-    file = '/mlflow/api_train_content_sees_this'
-    with open(file, 'w') as fp:
-        pass
-
     try:
-        train_model(**params.dict())
-        return {"message": "Training finished successfully!"}
+        recommendations_df = recommendation_system.recommend_movie(
+            params.movie_title, 
+            params.number_of_recommendations, 
+            params.genre
+        )
+        return recommendations_df.to_dict(orient="records")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/fetch_new_model/")
+def fetch_new_model(params: FetchNewModelParams):
+    """
+    Fetch a new version of the model from MLflow based on the given stage tag.
+    """
+    try:
+        recommendation_system.fetch_new_model(params.model_name, params.stage)
+        return {"status": "New model version fetched successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

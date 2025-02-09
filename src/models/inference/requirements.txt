@@ -9,3 +9,4 @@ python-dotenv
 httptools
 uvloop 
 uvicorn
+cloudpickle
