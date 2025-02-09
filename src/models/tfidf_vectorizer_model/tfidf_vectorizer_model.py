@@ -17,20 +17,13 @@ class TfidfVectorizerModel(mlflow.pyfunc.PythonModel):
 
     def predict(self, context, model_input, params: dict):
         # Transform the model_input
-        print(model_input)
-        print(type(model_input))
-        print(params)
         input_features = self.vectorizer.transform(model_input)
-        print(input_features)
-        print(type(input_features))
         number_of_recommendations = params["number_of_recommendations"]
         # Compute cosine similarity
         cosine_similarities = linear_kernel(input_features, self.data_features)
-        print(type(cosine_similarities))
         # Get the indices of the most similar rows and their similarities
         top_similar_indices = np.argsort(-cosine_similarities, axis=1)[:, :number_of_recommendations]
         top_similarities = np.sort(-cosine_similarities, axis=1)[:, :number_of_recommendations]
-        
         return top_similar_indices, -top_similarities
     
     # # Serialize and deserialize methods for the model

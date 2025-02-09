@@ -125,13 +125,13 @@ class MLFlowRecommendation:
             
         # Prepare the input for the model
         model_input = {"model_input": movie_genres}
-        print(movie_genres)
         # Generate recommendations using the model
         top_similar_indices, top_similarities = self.model.predict(movie_genres, params={"number_of_recommendations":number_of_recommendations})
-        print(top_similar_indices)
         # Retrieve the recommended movie titles, years, and similarity scores
-        recommended_movies = self.movie_data.iloc[top_similar_indices]
-        recommended_movies['similarity_score'] = top_similarities
+        recommended_movies = self.movie_data.iloc[top_similar_indices[0],:].copy()
+        print(recommended_movies)
+        recommended_movies[:,'similarity_score'] = top_similarities
+        
 
         recommendations_df = recommended_movies[['title', 'similarity_score']]
 
@@ -174,7 +174,6 @@ def fetch_new_model(params: FetchNewModelParams):
     Fetch a new version of the model from MLflow based on the given stage tag.
     """
     try:
-        recommendation_system.fetch_new_model(params.model_name, params.stage)
-        return {"status": "New model version fetched successfully"}
+        return recommendation_system.fetch_new_model(params.model_name, params.stage)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
