@@ -5,13 +5,20 @@ WORKDIR /home/api_preprocess_content/
 # Copy necessary files
 COPY requirements.txt .
 COPY api_preprocess_content.py .
-COPY .env_git .
 
 # Install dependencies using pip
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create necessary directories if needed
+RUN mkdir -p /home/api_preprocess_content/data
+
+# Use ARG to accept build-time variable
+ARG PREPROCESSING_PORT
+# ENV PORT=${DATABASE_PORT}
+
 # Expose the application port
-EXPOSE 9000
+EXPOSE ${PREPROCESSING_PORT}
+RUN echo "The training port is: ${PREPROCESSING_PORT}"
 
 # Run the application
-CMD ["uvicorn", "api_preprocess_content:app", "--host", "0.0.0.0", "--port", "9000"]
+CMD ["sh", "-c", "echo 'The application port is: ${PREPROCESSING_PORT}' && uvicorn api_preprocess_content:app --host 0.0.0.0 --port ${PREPROCESSING_PORT}"]

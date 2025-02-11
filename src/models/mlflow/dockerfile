@@ -1,5 +1,6 @@
 # Use Miniconda as the base image
 FROM continuumio/miniconda3
+RUN conda clean --all -y
 RUN conda update conda
 # Install necessary dependencies for user management
 RUN apt-get update && apt-get install -y sudo
@@ -14,7 +15,6 @@ RUN chmod -R 777 /mlflow /mlflow/conda_envs /mlflow/conda_pkgs /mlflow/artifacts
 
 RUN touch /mlflow/mlflow_sees_this_dir
 
-
 # Set the working directory to /mlflow
 WORKDIR /mlflow
 
@@ -23,7 +23,6 @@ USER mlflow
 
 # Copy the environment.yml file to the container
 COPY environment.yml .
-COPY .env_git .
 
 # Configure Conda to use the custom directories
 RUN conda config --add envs_dirs /mlflow/conda_envs
@@ -35,8 +34,16 @@ RUN conda env create -f environment.yml
 # Make RUN commands use the new environment
 SHELL ["conda", "run", "-n", "mlflow_env", "/bin/bash", "-c"]
 
-# Expose the port for the MLFlow server
-EXPOSE 5000
+# Use ARG to accept build-time variable
+ARG MLFLOW_PORT
+# ENV PORT=${DATABASE_PORT}
+
+# Expose the application port
+EXPOSE ${MLFLOW_PORT}
+RUN echo "The mlflow port is: ${MLFLOW_PORT}"
+
+ENV MLFLOW_PORT=${MLFLOW_PORT}
 
 # Set the entry point to run the MLFlow server as the non-root user
-ENTRYPOINT ["conda", "run", "-n", "mlflow_env", "mlflow", "server", "--host", "0.0.0.0", "--default-artifact-root", "/mlflow/artifacts" ]
+# ENTRYPOINT ["conda", "run", "-n", "mlflow_env", "mlflow", "server", "--host", "0.0.0.0", "--default-artifact-root", "/mlflow/artifacts", "--port", "${MLFLOW_PORT}"]
+ENTRYPOINT ["sh", "-c", "conda run -n mlflow_env mlflow server --host 0.0.0.0 --default-artifact-root /mlflow/artifacts --port ${MLFLOW_PORT}"]

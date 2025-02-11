@@ -5,29 +5,31 @@ services:
     build: 
       context: "${SCRIPT_DIR}/data"
       dockerfile: "dockerfile"
+      args:
+        DATABASE_PORT: ${DATABASE_PORT} # This is available at build time
     container_name: "database_container"
     ports:
-      - "8000:8000" # Expose the database API port
+      - "${DATABASE_PORT}:${DATABASE_PORT}" # Expose the database API port
     volumes:
-      - "database_raw_volume:/home/api_database/raw_data"
-      - "database_processed_volume:/home/api_database/processed_data"
-    environment:
-      - "BASE_URL=http://localhost:8000"
+      - database_raw_volume:/home/api_database/raw_data
+      - database_processed_volume:/home/api_database/processed_data
     env_file:
-      - "${SCRIPT_DIR}/data/.env_git"
+      - ".env" # This is only available at runtime
     networks: 
       - "movie_recommendation_network"
   mlflow:
     build: 
       context: "${SCRIPT_DIR}/models/mlflow"
       dockerfile: "dockerfile"
+      args:
+        MLFLOW_PORT: ${MLFLOW_PORT} # This is available at build time
     container_name: "mlflow_container"
     volumes:
-      - "mlflow_data:/mlflow"
+      - mlflow_data:/mlflow
     env_file:
-      - "${SCRIPT_DIR}/models/mlflow/.env_git"
+      - ".env"
     ports:
-      - "5000:5000"
+      - "${MLFLOW_PORT}:${MLFLOW_PORT}"
     networks:
       - "movie_recommendation_network"
     restart: always
@@ -35,42 +37,48 @@ services:
     build: 
       context: "${SCRIPT_DIR}/features"
       dockerfile: "dockerfile"
+      args:
+        PREPROCESSING_PORT: ${PREPROCESSING_PORT}
     container_name: "preprocess_container"
     networks: 
       - "movie_recommendation_network"
     ports:
-      - "9000:9000"
-    environment:
-      - "BASE_URL=http://database:8000"
+      - "${PREPROCESSING_PORT}:${PREPROCESSING_PORT}"
+    env_file:
+      - ".env"
   training:
     build: 
       context: "${SCRIPT_DIR}/models"
       dockerfile: "${SCRIPT_DIR}/models/training/dockerfile"
+      args:
+        TRAINING_PORT: ${TRAINING_PORT}
     container_name: "training_container"
     depends_on:
       - "database"
       - "mlflow"
     volumes:
-      - "mlflow_data:/mlflow"
+      - mlflow_data:/mlflow
     env_file:
-      - "${SCRIPT_DIR}/models/training/.env_git"
+      - ".env"
     ports:
-      - "8080:8080"
+      - "${TRAINING_PORT}:${TRAINING_PORT}"
     networks:
       - "movie_recommendation_network"
   inference:
     build: 
       context: "${SCRIPT_DIR}/models"
       dockerfile: "${SCRIPT_DIR}/models/inference/dockerfile"
+      args:
+        INFERENCE_PORT: ${INFERENCE_PORT}
     container_name: "inference_container"
     depends_on:
       - "mlflow"
     volumes:
-      - "mlflow_data:/mlflow"
+      - mlflow_data:/mlflow
     env_file:
-      - "${SCRIPT_DIR}/models/inference/.env_git"
+      - ".env"
     ports:
-      - "8090:8090"
+      - "${INFERENCE_PORT}:${INFERENCE_PORT}"
     networks:
       - "movie_recommendation_network"
 

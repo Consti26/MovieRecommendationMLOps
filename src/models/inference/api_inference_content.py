@@ -122,19 +122,25 @@ class MLFlowRecommendation:
                 movie_genres = np.array([self.preprocess_genres(genre)])
             else:
                 raise HTTPException(status_code=404, detail=f"Movie titled '{movie_title}' not found and no genre provided")
-            
-        # Prepare the input for the model
-        model_input = {"model_input": movie_genres}
-        # Generate recommendations using the model
-        top_similar_indices, top_similarities = self.model.predict(movie_genres, params={"number_of_recommendations":number_of_recommendations})
-        # Retrieve the recommended movie titles, years, and similarity scores
-        recommended_movies = self.movie_data.iloc[top_similar_indices[0],:].copy()
-        print(recommended_movies)
-        recommended_movies[:,'similarity_score'] = top_similarities
         
+        try:
+            # Prepare the input for the model
+            model_input = {"model_input": movie_genres}
+            # Generate recommendations using the model
+            top_similar_indices, top_similarities = self.model.predict(movie_genres, params={"number_of_recommendations":number_of_recommendations})
+            # Retrieve the recommended movie titles, years, and similarity scores
+            recommended_movies = self.movie_data.iloc[top_similar_indices[0],:].copy()
+            
+            # print(top_similarities.flatten())
+            # print(recommended_movies)
+            # print(f"The shape of the DataFrame is: {recommended_movies.shape}")
 
-        recommendations_df = recommended_movies[['title', 'similarity_score']]
-
+            recommended_movies['similarity_score'] = top_similarities.flatten()
+            # print(recommended_movies)
+            recommendations_df = recommended_movies[['title', 'similarity_score']]
+            
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
         return recommendations_df
 
     def fetch_new_model(self, model_name: Optional[str] = None, stage: Optional[str] = "production"):
@@ -145,7 +151,7 @@ class MLFlowRecommendation:
             self.model_name = model_name
         if stage:
             self.stage = stage
-        self.load_model_by_stage()
+        return self.load_model_by_stage()
 
 # Initialize the FastAPI app and the recommendation system
 app = FastAPI()
