@@ -2,107 +2,94 @@ version: '3.9'
 
 services:
   database:
-    build: # Build the DB_api from the DB_api directory
-      context: ./data
-      dockerfile: dockerfile
-    container_name: database_container
+    build: 
+      context: "${SCRIPT_DIR}/data"
+      dockerfile: "dockerfile"
+    container_name: "database_container"
     ports:
       - "8000:8000" # Expose the database API port
     volumes:
-      - database_raw_volume:/home/api_database/raw_data
-      - database_processed_volume:/home/api_database/processed_data
+      - "database_raw_volume:/home/api_database/raw_data"
+      - "database_processed_volume:/home/api_database/processed_data"
     environment:
-      - BASE_URL=http://localhost:8000
+      - "BASE_URL=http://localhost:8000"
     env_file:
-      - ./data/.env_git
+      - "${SCRIPT_DIR}/data/.env_git"
     networks: 
-      - movie_recommendation_network
-    # command: |
-    #   bash -c "source activate conda_env && uvicorn api_database:app --host 0.0.0.0 --port 8000"
-    #   bash -c "source activate conda_env && uvicorn api_database:app --host 0.0.0.0 --port 8000 & curl -X POST http://localhost:8000/api/v1/database/create?remove_existing=true && tail -f /dev/null"
-    
-    # The `tail -f /dev/null` ensures the container stays running after database initialization
+      - "movie_recommendation_network"
   mlflow:
     build: 
-      context: ./models/mlflow
-      dockerfile: dockerfile
-    container_name: mlflow_container
+      context: "${SCRIPT_DIR}/models/mlflow"
+      dockerfile: "dockerfile"
+    container_name: "mlflow_container"
     volumes:
-      - mlflow_data:/mlflow
+      - "mlflow_data:/mlflow"
     env_file:
-      - ./models/mlflow/.env_git
+      - "${SCRIPT_DIR}/models/mlflow/.env_git"
     ports:
       - "5000:5000"
     networks:
-      - movie_recommendation_network
+      - "movie_recommendation_network"
     restart: always
   preprocessing:
     build: 
-      context: ./features
-      dockerfile: dockerfile
-    #build: ../src/features # Build the Features service
-    container_name: preprocess_container
-    # depends_on:
-    #   - database # Ensure the database container is up before starting preprocessing
-    # volumes:
-    #   - ./Features:/app
+      context: "${SCRIPT_DIR}/features"
+      dockerfile: "dockerfile"
+    container_name: "preprocess_container"
     networks: 
-      - movie_recommendation_network
+      - "movie_recommendation_network"
     ports:
       - "9000:9000"
     environment:
-      BASE_URL: "http://database:8000"
-  # command: python preprocessing_content_based_mlflow.py
+      - "BASE_URL=http://database:8000"
   training:
     build: 
-      context: ./models
-      dockerfile: ./training/dockerfile
-    #build: ../src/features # Build the Features service
-    container_name: training_container
+      context: "${SCRIPT_DIR}/models"
+      dockerfile: "${SCRIPT_DIR}/models/training/dockerfile"
+    container_name: "training_container"
     depends_on:
-      - database
-      - mlflow
+      - "database"
+      - "mlflow"
     volumes:
-      - mlflow_data:/mlflow
+      - "mlflow_data:/mlflow"
     env_file:
-      - ./models/training/.env_git
+      - "${SCRIPT_DIR}/models/training/.env_git"
     ports:
       - "8080:8080"
     networks:
-      - movie_recommendation_network
+      - "movie_recommendation_network"
   inference:
     build: 
-      context: ./models
-      dockerfile: ./inference/dockerfile
-    #build: ../src/features # Build the Features service
-    container_name: inference_container
+      context: "${SCRIPT_DIR}/models"
+      dockerfile: "${SCRIPT_DIR}/models/inference/dockerfile"
+    container_name: "inference_container"
     depends_on:
-      - mlflow
+      - "mlflow"
     volumes:
-      - mlflow_data:/mlflow
+      - "mlflow_data:/mlflow"
     env_file:
-      - ./models/inference/.env_git
+      - "${SCRIPT_DIR}/models/inference/.env_git"
     ports:
       - "8090:8090"
     networks:
-      - movie_recommendation_network
-  #  command:  bash -c "source activate conda_env && uvicorn trainAPIcontent:app --host 0.0.0.0 --port 8080"
-  
+      - "movie_recommendation_network"
+
 volumes:
   mlflow_data:
     driver_opts:
       type: none
-      device: ./models/mlflow/workdir
+      device: "${SCRIPT_DIR}/models/mlflow/workdir"
       o: bind
   database_raw_volume:
     driver_opts:
       type: none
-      device: ./data/raw_data
+      device: "${SCRIPT_DIR}/data/raw_data"
       o: bind
   database_processed_volume:
     driver_opts:
       type: none
-      device: ./data/processed_data
+      device: "${SCRIPT_DIR}/data/processed_data"
       o: bind
+
 networks:
   movie_recommendation_network:
