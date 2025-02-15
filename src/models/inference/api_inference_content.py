@@ -110,9 +110,12 @@ class MLFlowRecommendation:
         Recommends a movie based on the similarity of genres.
         """
         # Ensure the model is loaded
+
+        print(f"Movie title: {movie_title}")
         if not self.model:
             raise HTTPException(status_code=400, detail="No model is currently loaded")
 
+        print("Model is loaded")
         # Try to get the movie genres for the given title
         movie_genres = self.movie_data.loc[self.movie_data['title'] == movie_title, 'genres']
 
@@ -122,11 +125,14 @@ class MLFlowRecommendation:
                 movie_genres = np.array([self.preprocess_genres(genre)])
             else:
                 raise HTTPException(status_code=404, detail=f"Movie titled '{movie_title}' not found and no genre provided")
-        
+        else:
+            movie_genres = np.array([self.preprocess_genres(movie_genres.values[0])])
+
         try:
             # Prepare the input for the model
-            model_input = {"model_input": movie_genres}
+            # model_input = {"model_input": movie_genres}
             # Generate recommendations using the model
+            
             top_similar_indices, top_similarities = self.model.predict(movie_genres, params={"number_of_recommendations":number_of_recommendations})
             # Retrieve the recommended movie titles, years, and similarity scores
             recommended_movies = self.movie_data.iloc[top_similar_indices[0],:].copy()
@@ -136,10 +142,10 @@ class MLFlowRecommendation:
             # print(f"The shape of the DataFrame is: {recommended_movies.shape}")
 
             recommended_movies['similarity_score'] = top_similarities.flatten()
-            # print(recommended_movies)
             recommendations_df = recommended_movies[['title', 'similarity_score']]
             
         except Exception as e:
+            print(f"An error occurred during recommendation: {str(e)}")
             raise HTTPException(status_code=400, detail=str(e))
         return recommendations_df
 

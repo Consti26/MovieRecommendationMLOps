@@ -17,14 +17,18 @@ class TfidfVectorizerModel(mlflow.pyfunc.PythonModel):
 
     def predict(self, context, model_input, params: dict):
         # Transform the model_input
-        input_features = self.vectorizer.transform(model_input)
-        number_of_recommendations = params["number_of_recommendations"]
-        # Compute cosine similarity
-        cosine_similarities = linear_kernel(input_features, self.data_features)
-        # Get the indices of the most similar rows and their similarities
-        top_similar_indices = np.argsort(-cosine_similarities, axis=1)[:, :number_of_recommendations]
-        top_similarities = np.sort(-cosine_similarities, axis=1)[:, :number_of_recommendations]
-        return top_similar_indices, -top_similarities
+        try:
+            input_features = self.vectorizer.transform(model_input)
+            number_of_recommendations = params["number_of_recommendations"]
+            # Compute cosine similarity
+            cosine_similarities = linear_kernel(input_features, self.data_features)
+            # Get the indices of the most similar rows and their similarities
+            top_similar_indices = np.argsort(-cosine_similarities, axis=1)[:, :number_of_recommendations]
+            top_similarities = np.sort(-cosine_similarities, axis=1)[:, :number_of_recommendations]
+            return top_similar_indices, -top_similarities
+        except Exception as e:
+            print(f"An error occurred during prediction: {str(e)}")
+            raise Exception(f"An error occurred during prediction: {str(e)}")
     
     # # Serialize and deserialize methods for the model
     # def save(self, path):

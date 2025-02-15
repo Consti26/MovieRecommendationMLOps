@@ -84,16 +84,19 @@ services:
 
 volumes:
   mlflow_data:
+    driver: local
     driver_opts:
       type: none
       device: "${SCRIPT_DIR}/models/mlflow/workdir"
       o: bind
   database_raw_volume:
+    driver: local
     driver_opts:
       type: none
       device: "${SCRIPT_DIR}/data/raw_data"
       o: bind
   database_processed_volume:
+    driver: local
     driver_opts:
       type: none
       device: "${SCRIPT_DIR}/data/processed_data"

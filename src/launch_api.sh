@@ -24,12 +24,12 @@ export SCRIPT_DIR=$(dirname "$(realpath "$0")")
 
 # echo ${SCRIPT_DIR}
 
-# ###########################
-# #   clean-up Docker State #
-# ###########################
+# # ###########################
+# # #   clean-up Docker State #
+# # ###########################
 
-# # Stop and remove all containers
-docker stop $(docker ps -a -q)
+# # # Stop and remove all containers
+# docker stop $(docker ps -a -q)
 # docker rm $(docker ps -a -q)
 
 # # Remove all images

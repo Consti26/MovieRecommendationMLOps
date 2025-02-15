@@ -9,9 +9,9 @@ RUN apt-get update && apt-get install -y sudo
 RUN groupadd -r mlflow && useradd -r -m -g mlflow mlflow
 
 # Create the /mlflow directory and set the user permissions
-RUN mkdir -p /mlflow /mlflow/conda_envs /mlflow/conda_pkgs /mlflow/artifacts
-RUN chown -R mlflow:mlflow /mlflow /mlflow/conda_envs /mlflow/conda_pkgs /mlflow/artifacts
-RUN chmod -R 777 /mlflow /mlflow/conda_envs /mlflow/conda_pkgs /mlflow/artifacts
+RUN mkdir -p /mlflow /conda_envs /conda_pkgs /mlflow/artifacts
+RUN chown -R mlflow:mlflow /mlflow /conda_envs /conda_pkgs /mlflow/artifacts
+RUN chmod -R 777 /mlflow /conda_envs /conda_pkgs /mlflow/artifacts
 
 RUN touch /mlflow/mlflow_sees_this_dir
 
@@ -25,8 +25,8 @@ USER mlflow
 COPY environment.yml .
 
 # Configure Conda to use the custom directories
-RUN conda config --add envs_dirs /mlflow/conda_envs
-RUN conda config --add pkgs_dirs /mlflow/conda_pkgs
+RUN conda config --add envs_dirs /conda_envs
+RUN conda config --add pkgs_dirs /conda_pkgs
 
 # Create the conda environment using the custom directories
 RUN conda env create -f environment.yml
