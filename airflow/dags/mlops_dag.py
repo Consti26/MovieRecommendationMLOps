@@ -6,7 +6,7 @@ import time
 
 # Définition des constantes API
 PREPROCESSING_API_URL = "http://preprocess_container:9000/preprocess_data"
-TRAINING_API_URL = "http://training_container:8080/train_content_filter"
+TRAINING_API_URL = "http://training_container:7000/train_content_filter"
 
 # Fonction pour appeler l'API de preprocessing
 def call_preprocessing_api():
@@ -46,7 +46,7 @@ default_args = {
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    'retry_delay': timedelta(minutes=1),
 }
 
 dag = DAG(
@@ -55,6 +55,7 @@ dag = DAG(
     description='Pipeline MLOps orchestrée avec Airflow',
     schedule_interval=timedelta(days=1),  # Exécution quotidienne
     catchup=False,
+    tags=['movie_recommendation']
 )
 
 # Définition des tâches

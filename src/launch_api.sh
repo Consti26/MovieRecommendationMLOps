@@ -70,5 +70,6 @@ export SCRIPT_DIR=$(dirname "$(realpath "$0")")
 #######################
 
 # docker builder prune -f
-docker-compose up #-d 
+docker network create movie_recommendation_network
+docker-compose up --build #-d 
 # docker builder prune -f

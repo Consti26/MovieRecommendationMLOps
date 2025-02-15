@@ -104,3 +104,4 @@ volumes:
 
 networks:
   movie_recommendation_network:
+    external: true

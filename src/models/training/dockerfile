@@ -5,7 +5,6 @@ WORKDIR /home/api_train_content/
 # Copy necessary files
 COPY ./training/requirements.txt .
 COPY ./training/api_train_content.py .
-COPY ./training/.env_git .
 COPY ./tfidf_vectorizer_model/__init__.py .
 COPY ./tfidf_vectorizer_model/tfidf_vectorizer_model.py .
 
