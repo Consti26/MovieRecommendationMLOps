@@ -1,4 +1,4 @@
-version: '3.9'
+#version: '3.9'
 
 services:
   database:
@@ -104,4 +104,5 @@ volumes:
 
 networks:
   movie_recommendation_network:
-    external: true
+    #driver: bridge
+    #external: true
