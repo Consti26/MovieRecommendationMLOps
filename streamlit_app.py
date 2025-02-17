@@ -136,21 +136,58 @@ if page == pages[3]:
     st.markdown("<h1 style='text-align: center; color: #fdb94a;'>Global architecture</h1>", unsafe_allow_html=True)
     st.image("references/final_architecture.jpg", use_column_width=True)
 
-    st.write("##### Characteristics of the architecture : ")
+    st.markdown("""
+    <div style='text-align: left;'>
+        <h3 style='display: inline; color: #fdb94a;'>Characteristics of the architecture </h3>
+        <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Global infos
     st.write("""
     - Each compononent is dockerized to ensure the robustness of the system.
-    - MLFlow log the model(s) and trained dataset.
+    - The process is : 
+        1. The datachecks and pre processing script query the database, perform the pre processing and write the preprocessed dataset in the database to a new path.
+        2. The training script query the pre processed dataset, train a model and get a trained dataset.
+        3. MLFlow log the model(s) and trained dataset.
+        4. The inference script is triggered by the request of recommendation in the front page.
     - Airflow orchestrate the data checks and preprocessing script, followed by the training script.
-    - The inference script is triggered by the request of recommendation in the front page.
     """)
 
-    # Add things on the docker compose
+    st.write("") # line break
+    st.write("") # line break
+
+    # Docker characteristics
+    st.write("#### Docker characteristics")
+    st.write("""
+    The docker-compose file orchestrates 5 of the docker containers (Airflow is managed on the side).
+
+    - **Build Context:** All docker containers use a custom Dockerfile located inside the associated folder (data, features, mlflow, models).
+    - **Exposure:** Each docker container exposes a port to display API endpoints, application UIs, etc.
+    - **Volumes:** Volumes are defined in `mlflow_data` for persisting MLflow data, and in `database_raw_volume` and `database_processed_volume` for storing raw and processed database files.
+    - **Network:** All services are connected to a common network (`movie_recommendation_network`), facilitating seamless communication.
+    """)
+
+    # - **Dependency Management:** all dependencies are Installed via Python packages with pip.
+    # - **Port Configuration:** all application accepts a build-time argument to define the application’s port, which is then exposed and used when starting the server.
+    # - **Running the API:** all applications are started with Uvicorn, binding to `0.0.0.0` to allow external access.
+
 
 # ============================================ PAGE 4 (Database) ============================================
 if page == pages[4]:
     st.markdown("<h1 style='text-align: center; color: #fdb94a;'>Database</h1>", unsafe_allow_html=True)
     #st.image("references/final_architecture.jpg", use_column_width=True)
 
+    # Schema of the process
+    st.markdown("""
+    <div style='text-align: left;'>
+        <h3 style='display: inline; color: #fdb94a;'>Global overview</h3>
+        <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
+    </div>
+    """, unsafe_allow_html=True)
+    st.image("references/database.png", use_column_width=True)
+
+    # Database API
     st.markdown("""
     <div style='text-align: left;'>
         <h3 style='display: inline; color: #fdb94a;'>Database API</h3>
@@ -159,79 +196,122 @@ if page == pages[4]:
     """, unsafe_allow_html=True)
     st.markdown("""
     - **Data Ingestion & Storage:**
-        - **CSV to SQLite:**  
-            Downloads the MovieLens dataset from Kaggle and ingests CSV files into an SQLite database in manageable chunks (controlled by *CHUNKSIZE*), ensuring efficient memory use.
-
+        - Downloads the MovieLens dataset from Kaggle and ingests CSV files into an SQLite database in manageable chunks (controlled by *CHUNKSIZE*), ensuring efficient memory use.
     - **API Endpoints (Using FastAPI):**
-        - **Data Retrieval:**  
-            Provides endpoints to stream large datasets (movies and preprocessed data) using chunked responses to efficiently serve data without memory overload.
-        - **Data Insertion:**  
-            Supports both single and batch insertion of new movie and rating records.
+        - The database has **13 APIs endpoint**.
+        - **Data Sent:** It provides endpoint to query the data from outside the database (in our case, from the preprocessing or the training script.)
+        - **Data Insertion:** It provides endpoints to stream large datasets (movies and preprocessed data), or both single and batch insertion of new movie and rating records.
     """)
 
+    # Containerization specificities
     st.markdown("""
     <div style='text-align: left;'>
-        <h3 style='display: inline; color: #fdb94a;'>Containerization</h3>
+        <h3 style='display: inline; color: #fdb94a;'>Containerization specificities</h3>
         <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
     </div>
     """, unsafe_allow_html=True)
     st.markdown("""
         - **Base Image & Setup:**  
-            Uses a lightweight `python:3.9-slim` image. The working directory is set, and necessary files (script and requirements) are copied into the container.
-        - **Dependency Management:**  
-            Installs required Python packages via pip.
+            Uses a lightweight `python:3.9-slim` image. The working directory is set to `/home/api_database`, and necessary files (script and requirements) are copied into the container.
         - **Directory Structure:**  
             Creates directories for processed and raw data to mimic the expected local file structure.
-        - **Port Configuration:**  
-            Accepts a build-time argument (*DATABASE_PORT*) to define the application’s port, which is then exposed and used when starting the server.
-        - **Running the API:**  
-            The application is started with Uvicorn, binding to `0.0.0.0` to allow external access.
-        """)
-
-    st.image("references/database.png", use_column_width=True)
+    """)
+    
 
 # ============================================ PAGE 5 (Preprocessing) ============================================
 if page == pages[5]:
     st.markdown("<h1 style='text-align: center; color: #fdb94a;'>Pre processing</h1>", unsafe_allow_html=True)
 
-    # Python Script Overview
+    # Schema of the process
     st.markdown("""
     <div style='text-align: left;'>
-        <h3 style='display: inline; color: #fdb94a;'>Preprocessing script overview</h3>
+        <h3 style='display: inline; color: #fdb94a;'>Global overview</h3>
+        <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
+    </div>
+    """, unsafe_allow_html=True)
+    st.image("references/preprocessing.png", use_column_width=True)
+
+    # Preprocessing Script Overview
+    st.markdown("""
+    <div style='text-align: left;'>
+        <h3 style='display: inline; color: #fdb94a;'>Preprocessing script</h3>
         <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
     </div>
     """, unsafe_allow_html=True)
     st.markdown("""
     - **API & Environment Setup:**
-        - **FastAPI Service:** Implements a pre-processing API to request data from the MovieLens dataset in the database.
-        - **Dynamic Database Connection:**
+        - Implements a pre-processing API to request data from the database with a Dynamic Database Connection
     - **Data Integrity Checks:**
         - Validates the DataFrame structure (checks for expected columns, unique IDs, correct data types, and non-empty genres).
     - **Data Preprocessing Steps:**
         - **Perform preprocessing on the dataset and data cleaning.**
     - **Database Table Management and data Insertion:**
         - Calls an API endpoint to create (or reset) the preprocessed_dataset table.
-        - Converts the cleaned DataFrame to JSON and sends it to the API endpoint for bulk insertion.
     """, unsafe_allow_html=True)
 
-    # Docker Integration
+    # Containerization specificities
     st.markdown("""
     <div style='text-align: left;'>
-        <h3 style='display: inline; color: #fdb94a;'>Docker integration</h3>
+        <h3 style='display: inline; color: #fdb94a;'>Containerization specificities</h3>
         <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
     </div>
     """, unsafe_allow_html=True)
     st.markdown("""
-    - **Base Image & Working Directory:**
-        - Uses `python:3.9-slim` with the working directory set to `/home/api_preprocess_content/`.
-    - **Dependency & File Management:**
-        - Copies the necessary Python script and `requirements.txt`.
-        - Installs dependencies using pip.
-    - **Directory & Port Configuration:**
+    - **Base Image & Setup:**
+        - Uses a lightweight `python:3.9-slim` image. The working directory is set to `/home/api_preprocess_content/data`, and necessary files (script and requirements) are copied into the container.
+    - **Directory Structure:**
         - Creates any required directories (e.g., `/home/api_preprocess_content/data`).
-        - Accepts a build-time argument (`PREPROCESSING_PORT`) to set and expose the application port.
-    - **Container Launch:**
-        - Runs the FastAPI application with Uvicorn, binding to `0.0.0.0` on the specified `PREPROCESSING_PORT`.
     """, unsafe_allow_html=True)
 
-    st.image("references/preprocessing.png", use_column_width=True)
+
+
+# ============================================ PAGE 6 (Training) ============================================
+if page == pages[6]:
+    st.markdown("<h1 style='text-align: center; color: #fdb94a;'>Training phase</h1>", unsafe_allow_html=True)
+
+    # Schema of the process
+    st.markdown("""
+    <div style='text-align: left;'>
+        <h3 style='display: inline; color: #fdb94a;'>Global overview</h3>
+        <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
+    </div>
+    """, unsafe_allow_html=True)
+    st.image("references/training.png", width=300)
+
+    # Training Script
+    st.markdown("""
+    <div style='text-align: left;'>
+        <h3 style='display: inline; color: #fdb94a;'>Training script</h3>
+        <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
+    </div>
+    """, unsafe_allow_html=True)
+    
+
+    # Containerization specificities
+    st.markdown("""
+    <div style='text-align: left;'>
+        <h3 style='display: inline; color: #fdb94a;'>Containerization specificities</h3>
+        <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+
+
+
+
+
+# ============================================ PAGE 9 (Conclusion) ============================================
+if page == pages[9]:
+    st.markdown("<h1 style='text-align: center; color: #fdb94a;'>Conclusion</h1>", unsafe_allow_html=True)
+
+    # Strength :
+    # - Dynamic Database Connection in each script
+
+    # Weaknesses : 
+    # No user management to the db, streamlit etc
+
+
+    # Improvment : 
+    # Add user management : it would allow us to create different roles : user to only consume the recommendation, admin to load csv into the db ...
+    
