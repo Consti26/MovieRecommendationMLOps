@@ -240,6 +240,7 @@ if page == pages[5]:
     """, unsafe_allow_html=True)
     st.markdown("""
     - **API & Environment Setup:**
+        - The training script has **1 APIs endpoint in POST**.
         - Implements a pre-processing API to request data from the database with a Dynamic Database Connection
     - **Data Integrity Checks:**
         - Validates the DataFrame structure (checks for expected columns, unique IDs, correct data types, and non-empty genres).
@@ -286,6 +287,26 @@ if page == pages[6]:
     </div>
     """, unsafe_allow_html=True)
     
+    st.markdown("""
+    - **API & Environment Setup:**
+        - The inference script has **5 APIs endpoint**.
+        - Implements a training API to request the preprocessed dataset from the database with a Dynamic Database Connection
+        - Performs DNS lookups for both the database and MLflow containers (using environment variables) to construct API endpoints for fetching preprocessed data and interacting with MLflow.
+    - **Data & Model Preparation:**
+        - **Fetching Data:**  
+            Retrieves preprocessed movie data (e.g., movie genres) via a GET request to the database API.
+        - **Sampling:**  
+            Applies a sample fraction to the data before training.
+        - **TF-IDF Model Training:**  
+            Uses scikit-learn’s TfidfVectorizer wrapped in a custom TfidfVectorizerModel to fit on the genres column.
+    - **MLflow Integration:**
+        - **Experiment Tracking:**  
+            Sets the MLflow tracking URI and logs experiment parameters (like max_features, min_df, etc.).
+        - **Metrics & Artifacts Logging:**  
+            Computes the vocabulary size and logs it as a metric, saves a CSV of movie titles, and logs the custom model along with an inferred input signature.
+        - **Model Registration & Management:**  
+            Provides endpoints for listing experiments, displaying artifacts, registering models, and managing model tags.
+    """)
 
     # Containerization specificities
     st.markdown("""
@@ -294,24 +315,145 @@ if page == pages[6]:
         <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
     </div>
     """, unsafe_allow_html=True)
+    st.markdown("""
+    - **Base Image & Setup:**
+        - Uses a lightweight `python:3.9-slim` image. The working directory is set to `/home/api_train_content`, and necessary files (script, custom TF-IDF model files and requirements) are copied into the container.
+    """)
+
+# ============================================ PAGE 7 (Inference) ============================================
+if page == pages[7]:
+    st.markdown("<h1 style='text-align: center; color: #fdb94a;'>Inference</h1>", unsafe_allow_html=True)
+
+    # Schema of the process
+    st.markdown("""
+    <div style='text-align: left;'>
+        <h3 style='display: inline; color: #fdb94a;'>Global overview</h3>
+        <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
+    </div>
+    """, unsafe_allow_html=True)
+    st.image("references/inference.png", width = 600)
+
+    # Inference Script Overview
+    st.markdown("""
+    <div style='text-align: left;'>
+        <h3 style='display: inline; color: #fdb94a;'>Inference script</h3>
+        <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("""
+    - **Integration & Setup:**
+        - The service performs a DNS lookup to resolve the MLflow container’s address and constructs the MLflow URL.
+        - The `MLFlowRecommendation` class is initialized with a specified model name (defaulting to `"contentbased_filter"`) and loads the production model from MLflow.
+        - It downloads necessary artifacts (like `movie_data.csv`) that contain the movie details.
+    - **Recommendation Process:**
+        - It has an endpoit  that receives a movie title, desired number of recommendations, and an optional genre.
+        - If the movie is found in the loaded movie data, it uses its genres; otherwise, it uses the provided genre.
+        - The genres are preprocessed (e.g., replacing delimiters) and passed to the model.
+        - The model’s `predict()` function returns indices and similarity scores which are used to lookup and return the recommended movies as JSON.
+    - **Model Update:**
+        - It has an endpoint that allows fetching a new version of the model from MLflow based on a stage tag (e.g., production).
+    """)
+
+    # Containerization specificities
+    st.markdown("""
+    <div style='text-align: left;'>
+        <h3 style='display: inline; color: #fdb94a;'>Containerization specificities</h3>
+        <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("""
+    - **Base Image & Setup:**
+        - Uses a lightweight `python:3.9-slim` image. The working directory is set to `/home/api_inference_content`, and necessary files (inference API, TF-IDF model files, and requirements) are copied into the container.
+    """, unsafe_allow_html=True)
 
 
 
+# ============================================ PAGE 8 (Airflow) ============================================
+if page == pages[8]:
+    st.markdown("<h1 style='text-align: center; color: #fdb94a;'>Airflow</h1>", unsafe_allow_html=True)
 
+    # DAG definition
+    st.markdown("""
+    <div style='text-align: left;'>
+        <h3 style='display: inline; color: #fdb94a;'>DAG definition</h3>
+        <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
+    </div>
+    """, unsafe_allow_html=True)
 
+    st.markdown("""
+    - **Purpose:** Orchestrates an end-to-end MLOps pipeline by triggering two key API endpoints:
+        1. **Preprocessing API:** Calls the preprocessing endpoint to process raw data at preprocess_container
+        2. **Training API:** Calls the training endpoint with a JSON payload (containing experiment name, model name, TF-IDF parameters, and a sample fraction) to train a content-based filtering model at training_container
+    - **DAG Configuration:**
+        - **Name:** mlops_pipeline  
+        - **Schedule:** Runs daily starting from February 12, 2024.  
+        - **Retry Policy:** 1 retry with a 1-minute delay.
+    - **Task Orchestration:**
+        - The preprocessing task runs first.  
+        - Once completed successfully, the training task is triggered.
+    """)
+    
+    # Containerization specificities
+    st.markdown("""
+    <div style='text-align: left;'>
+        <h3 style='display: inline; color: #fdb94a;'>Containerization specificities</h3>
+        <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    - **Services Defined:** Postgres, Redis, Airflow-Webserver, Airflow-Scheduler, Airflow-Worker, Airflow-Init
+    - **Networking & Volumes:**
+        - **Networks:**
+            - `airflow_network`: A dedicated network for Airflow components.
+            - `src_movie_recommendation_network`: An external network used to connect airflow with the movie recommendation services.
+        - **Volumes:**
+            - `postgres_data`: Persists the Postgres database data.
+    """)
 
 
 # ============================================ PAGE 9 (Conclusion) ============================================
 if page == pages[9]:
     st.markdown("<h1 style='text-align: center; color: #fdb94a;'>Conclusion</h1>", unsafe_allow_html=True)
 
-    # Strength :
-    # - Dynamic Database Connection in each script
+    # Recap of the process
+    st.markdown("""
+    <div style='text-align: left;'>
+        <h3 style='display: inline; color: #fdb94a;'>Recap of the process</h3>
+        <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Weaknesses : 
-    # No user management to the db, streamlit etc
+    st.markdown("""
+    Our application allows a user to visit a Streamlit page and request a movie recommendation, based on another movie name or a genre if no movie name is provided.
+    **During our project we have:**
+    1. **Developped a content-based recommender system.**
+    2. **Established an End-to-End MLOps Pipeline.**
+
+    ##### Strengths of our application:
+    - Dynamic Database Connection in each script
+    - Dockerization of each application, to ensure robustness of the global solution
+
+    ##### Weaknesses:
+    - No user management for the database, Streamlit, etc.
+    - Limited number of movies in the database
+    """)
 
 
-    # Improvment : 
-    # Add user management : it would allow us to create different roles : user to only consume the recommendation, admin to load csv into the db ...
-    
+    # Futur improvments
+    st.markdown("""
+    <div style='text-align: left;'>
+        <h3 style='display: inline; color: #fdb94a;'>Futur improvments</h3>
+        <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    - **Add user management:** It would allow us to create different roles:  
+        - **User:** Can only consume the recommendations.  
+        - **Admin:** Can load CSV data into the database, among other administrative tasks.
+
+    - **Improve recommender capabilities:**  
+        - Allow users to choose the number of recommendations.  
+        - Use Levenshtein distance when a movie not present in the database is written by the user.
+    """) 
