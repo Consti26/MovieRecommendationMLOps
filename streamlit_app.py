@@ -1,10 +1,20 @@
 import streamlit as st
-import numpy as np
+import requests
+import os 
 import pandas as pd
-import matplotlib.pyplot as plt
-from datetime import datetime
-from sklearn.model_selection import ParameterGrid
-import pickle
+
+API_INFERENCE_URL = os.getenv('API_INFERENCE_URL', 'http://localhost:7090/recommend_movie/')
+def call_inference_api(movie_title: str, number_of_recommendations: int = 10, genre: str = None):
+    params = {
+    "movie_title": movie_title,
+    "number_of_recommendations": number_of_recommendations,
+    "genre": genre
+    }
+    response = requests.post(API_INFERENCE_URL, json=params)
+    if response.status_code == 200:     
+        return response.json()
+    else:     
+        raise Exception(f"❌ Error during inference : {response.text}")
 
 # ============================================ SIDEBAR ============================================ 
 st.sidebar.image("references/movie_recommender.png", use_column_width=True)
@@ -27,7 +37,8 @@ page = st.sidebar.radio("Go to", pages)
 if page == pages[0]:
     st.markdown("""
     <div style='text-align: center; padding-top: 10vh;'>
-        <h1 style='font-size: 60px;'>Movie Recommender System</h1>
+        <h1 style='font-size: 60px;'>The Great Movie Filter</h1>
+        <h1 style='font-size: 40px;'>Filtering the Cosmos of Cinema to Find Your Perfect Pick</h1>
     </div>
     """, unsafe_allow_html=True)
     st.markdown('--------------------------------------------------------------------------')
@@ -129,7 +140,27 @@ if page == pages[2]:
     if st.button("Search"):
         st.write(f"Searching recommendations for: {search_query}")
         # insert code of the inference api 
+        try:
+            recommendations = call_inference_api(search_query)
+            st.write("Recommendations:")
+            recommendations_df = pd.DataFrame(recommendations)
+            st.table(recommendations_df)  # Display the recommendations in a table format
+        except Exception as e:   
+            st.write(f"An error occurred: {str(e)}")
 
+    # Insert Search Bar
+    genre_query = st.text_input("Alternatively search by genre:")
+    if st.button("Search For Genre"):	
+        st.write(f"Searching recommendations for: {genre_query}")
+        # insert code of the inference api 
+        try:
+            recommendations = call_inference_api("  ", genre=genre_query)
+            st.write("Recommendations:")
+            recommendations_df = pd.DataFrame(recommendations)
+            st.table(recommendations_df)  # Display the recommendations in a table format
+        except Exception as e:   
+            st.write(f"An error occurred: {str(e)}")
+        
 
 # ============================================ PAGE 3 (Global architecture) ============================================
 if page == pages[3]:
