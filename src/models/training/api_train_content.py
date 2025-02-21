@@ -10,7 +10,7 @@ import os
 import json
 from pydantic import BaseModel
 from typing import Optional, List
-#from tfidf_vectorizer_model import TfidfVectorizerModel
+from tfidf_vectorizer_model import TfidfVectorizerModel
 from mlflow.models import infer_signature
 
 from fastapi import FastAPI, HTTPException, Query
