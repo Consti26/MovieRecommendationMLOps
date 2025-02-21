@@ -1,0 +1,89 @@
+database
+flowchart TD
+    B[Check/Create Directories:for raw_data & processed_data]
+    B --> C[Download Dataset from Kaggle:using kagglehub]
+    C --> D[Copy/Move Dataset to raw_data folder]
+    D --> E[Create/Reset SQLite Database:at DATABASE_PATH]
+    E --> G[Read CSV in Chunks using CHUNKSIZE]
+    G --> H[Insert Chunk into SQLite Table]
+    H --> J[Close SQLite Connection]
+    J --> K[Expose API Endpoints via FastAPI]
+    K --> L[GET Endpoints:/api/v1/movies, api/v1/database]
+    K --> M[POST Endpoints:Insert preprocessed dataset]
+
+
+	
+preprocessing
+flowchart TD
+    B[Dynamically re create API URLs: MOVIE, CREATE TABLE, INSERT DATA]
+    B --> C[GET Data from MOVIE_ENDPOINT]
+    C --> D[Stream Data into Pandas DataFrame]
+    subgraph F [Data checks]
+        F1[Dataframe is not empty]
+        F2[Columns match the expected format]
+        F3[Non empty genres]
+    end
+    D --> F
+    subgraph H [Data Transformation]
+        G1[Extract Title:remove trailing year]
+        G2[Extract Year]
+        G3[Filter Movies:remove 'no genres listed']
+        G4[Clean Genres:standardize names, replace delimiters]
+        G5[Drop NaN Values]
+    end
+    F --> H
+    H --> I[POST Request to CREATE_PREPROCESSED_TABLE Endpoint]
+    I --> J[POST Preprocessed Data to INSERT_PREPROCESSED_TABLE Endpoint]
+    J --> K[Return Success Message]
+	
+	
+training
+flowchart TD
+    A[Start: Trigger /train_content_filter Endpoint]
+    C[Fetch Preprocessed Data : GET Request]
+    E[Start MLflow Run & Log Parameters]
+    F[Train TF-IDF Model on 'genres']
+    G[Infer Input Signature]
+    H[Log Metrics & Save Artifacts]
+    I[Log Custom TF-IDF Model to MLflow]
+    J[End MLflow Run]
+    K[Return Success Message]
+    A --> C
+    C --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> I
+    I --> J
+    J --> K
+	
+Inference 
+flowchart TD
+    A[Start Inference API Container]
+    B[DNS Lookup for MLflow Container and Construct MLflow URL]
+    D[Initialize MLFlowRecommendation]
+    E[Load Production Model from MLflow]
+    F[Download Movie Data Artifact : movie_data.csv]
+    H[Expose API endpoint POST /movie sent trhough front page]
+    I[Receive Request: movie_title, number_of_recommendations, genre]
+    J[Lookup movie in movie_data]
+    L[Call model.predict with processed input]
+    M[Retrieve recommendations : titles & similarity scores]
+    N[Return recommendations as JSON]
+    O[POST /fetch_new_model/ Endpoint]
+    P[Reload new model version from MLflow]
+    Q[Return model update status]
+    
+    A --> B
+    B --> D
+    D --> E
+    E --> F
+    F --> H
+    H --> I
+    I --> J
+    J --> L
+    L --> M
+    M --> N
+    F --> O
+    O --> P
+    P --> Q
