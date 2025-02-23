@@ -1,10 +1,20 @@
 import streamlit as st
-import numpy as np
+import requests
+import os 
 import pandas as pd
-import matplotlib.pyplot as plt
-from datetime import datetime
-from sklearn.model_selection import ParameterGrid
-import pickle
+
+API_INFERENCE_URL = os.getenv('API_INFERENCE_URL', 'http://localhost:7090/recommend_movie/')
+def call_inference_api(movie_title: str, number_of_recommendations: int = 10, genre: str = None):
+    params = {
+    "movie_title": movie_title,
+    "number_of_recommendations": number_of_recommendations,
+    "genre": genre
+    }
+    response = requests.post(API_INFERENCE_URL, json=params)
+    if response.status_code == 200:     
+        return response.json()
+    else:     
+        raise Exception(f"❌ Error during inference : {response.text}")
 
 # ============================================ SIDEBAR ============================================ 
 st.sidebar.image("references/movie_recommender.png", use_column_width=True)
@@ -27,7 +37,8 @@ page = st.sidebar.radio("Go to", pages)
 if page == pages[0]:
     st.markdown("""
     <div style='text-align: center; padding-top: 10vh;'>
-        <h1 style='font-size: 60px;'>MLOps for Movie Recommender System </h1>
+        <h1 style='font-size: 60px;'>The Great Movie Filter</h1>
+        <h1 style='font-size: 40px;'>Filtering the Cosmos of Cinema to Find Your Perfect Pick</h1>
     </div>
     """, unsafe_allow_html=True)
     st.markdown('--------------------------------------------------------------------------')
@@ -125,18 +136,30 @@ if page == pages[2]:
     
     # Insert Search Bar
     search_query = st.text_input("Enter the movie name:")
-    if st.button("SearchMovie"):
-        st.write(f"Searching recommendations for movie: {search_query}")
-        # insert code of the inference api
-
-    st.write("**If you don't have a movie in mind, you can give us a genre and we will give you our 10 recommendations.**")
-    
-    # Insert Search Bar
-    search_query = st.text_input("Enter the genre:")
-    if st.button("SearchGenre"):
-        st.write(f"Searching recommendations for genre: {search_query}")
+    if st.button("Search"):
+        st.write(f"Searching recommendations for: {search_query}")
         # insert code of the inference api 
+        try:
+            recommendations = call_inference_api(search_query)
+            st.write("Recommendations:")
+            recommendations_df = pd.DataFrame(recommendations)
+            st.table(recommendations_df)  # Display the recommendations in a table format
+        except Exception as e:   
+            st.write(f"An error occurred: {str(e)}")
 
+    # Insert Search Bar
+    genre_query = st.text_input("Alternatively search by genre:")
+    if st.button("Search For Genre"):	
+        st.write(f"Searching recommendations for: {genre_query}")
+        # insert code of the inference api 
+        try:
+            recommendations = call_inference_api("  ", genre=genre_query)
+            st.write("Recommendations:")
+            recommendations_df = pd.DataFrame(recommendations)
+            st.table(recommendations_df)  # Display the recommendations in a table format
+        except Exception as e:   
+            st.write(f"An error occurred: {str(e)}")
+        
 
 # ============================================ PAGE 3 (Global architecture) ============================================
 if page == pages[3]:
@@ -145,15 +168,14 @@ if page == pages[3]:
 
     st.markdown("""
     <div style='text-align: left;'>
-        <h3 style='display: inline; color: #fdb94a;'>Explaination of the architecture </h3>
+        <h3 style='display: inline; color: #fdb94a;'>Characteristics of the architecture </h3>
         <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
     </div>
     """, unsafe_allow_html=True)
 
     # Global infos
     st.write("""
-    - Each compononent is dockerized to nsures consistency across environments, Simplifies dependency management, Facilitates reproducibility of experiments and deployments. To sum up, it unsure the robustness of the system.
-    - The process is : 
+    - Each compononent is dockerized to nsures consistency across environments, Simplifies dependency management, Facilitates reproducibility of experiments and deployments. To sum up, it unsure the robustness of the system.    - The process is : 
         1. The datachecks and pre processing script query the database, perform the pre processing and write the preprocessed dataset in the database to a new path.
         2. The training script query the pre processed dataset, train a model and get a trained dataset.
         3. MLFlow log the model(s) and trained dataset.
@@ -193,7 +215,7 @@ if page == pages[4]:
         <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
     </div>
     """, unsafe_allow_html=True)
-    st.image("references/database.png", width = 500)
+    st.image("references/database.png", use_column_width=True)
 
     # Database API
     st.markdown("""
@@ -389,7 +411,7 @@ if page == pages[8]:
     """, unsafe_allow_html=True)
 
     st.markdown("""
-    - **Purpose:** Orchestrates and schedule pipeline. We call 2 scripts from Airflow via APIs : 
+    - **Purpose:** Orchestrates an end-to-end MLOps pipeline by triggering two key API endpoints:
         1. **Preprocessing API:** Calls the preprocessing endpoint to process raw data at preprocess_container
         2. **Training API:** Calls the training endpoint with a JSON payload (containing experiment name, model name, TF-IDF parameters, and a sample fraction) to train a content-based filtering model at training_container
     - **Task Orchestration:**

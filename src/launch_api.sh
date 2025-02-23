@@ -56,7 +56,7 @@ export SCRIPT_DIR=$(dirname "$(realpath "$0")")
 # ##################
 # #  up Containers #
 # ##################
-
+# docker network create movie_recommendation_network
 # docker-compose up --build #--no-cache
  docker compose up --build 
 sleep 10
@@ -71,6 +71,5 @@ sleep 10
 #######################
 
 # docker builder prune -f
-#docker network create movie_recommendation_network
-#docker-compose up --build #-d 
+docker-compose up #--build
 # docker builder prune -f
