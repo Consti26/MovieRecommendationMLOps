@@ -440,6 +440,7 @@ if page == pages[9]:
 
     ##### Strengths of our application:
     - Dynamic Database Connection in each script
+    - Dynamic retrieve of the containers URL's, port etc...
     - Dockerization of each application, to ensure robustness of the global solution
 
     ##### Weaknesses:
@@ -464,6 +465,7 @@ if page == pages[9]:
     - **Improve recommender capabilities:**  
         - Allow users to choose the number of recommendations.  
         - Use Levenshtein distance when a movie not present in the database is written by the user.
+        - Add an other recommender system : collaborative filtering method. 
                 
     - **Addition of new movies everyday**  
     """) 
