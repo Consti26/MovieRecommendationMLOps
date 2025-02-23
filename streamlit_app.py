@@ -67,8 +67,7 @@ if page == pages[1]:
         st.header("🗻")
     with col2:
         st.write("""##### **Challenges:** In today’s data-driven landscape, personalized experiences are key to engaging users and driving business value. \
-        This project focuses on developing a recommender system embedded within an MLOps framework to ensure the solution is robust, scalable, and maintainable.\
-        performance of the operations.""")
+        This project focuses on developing a recommender system embedded within an MLOps framework to ensure the solution is robust, scalable, and maintainable.""")
 
     # Objectives
     col1, col2 = st.columns([0.5, 8.5])
@@ -176,8 +175,7 @@ if page == pages[3]:
 
     # Global infos
     st.write("""
-    - Each compononent is dockerized to ensure the robustness of the system.
-    - The process is : 
+    - Each compononent is dockerized to nsures consistency across environments, Simplifies dependency management, Facilitates reproducibility of experiments and deployments. To sum up, it unsure the robustness of the system.    - The process is : 
         1. The datachecks and pre processing script query the database, perform the pre processing and write the preprocessed dataset in the database to a new path.
         2. The training script query the pre processed dataset, train a model and get a trained dataset.
         3. MLFlow log the model(s) and trained dataset.
@@ -191,9 +189,10 @@ if page == pages[3]:
     # Docker characteristics
     st.write("#### Docker characteristics")
     st.write("""
-    The docker-compose file orchestrates 5 of the docker containers (Airflow is managed on the side).
+    The docker-compose file orchestrates 5 of the docker containers (Airflow is managed on the side) and it persists data and enable communication between services with Volume and Networks.
 
     - **Build Context:** All docker containers use a custom Dockerfile located inside the associated folder (data, features, mlflow, models).
+    - **Images:** The containers are built using a lightweight `python:3.9-slim` image.
     - **Exposure:** Each docker container exposes a port to display API endpoints, application UIs, etc.
     - **Volumes:** Volumes are defined in `mlflow_data` for persisting MLflow data, and in `database_raw_volume` and `database_processed_volume` for storing raw and processed database files.
     - **Network:** All services are connected to a common network (`movie_recommendation_network`), facilitating seamless communication.
@@ -242,8 +241,8 @@ if page == pages[4]:
     </div>
     """, unsafe_allow_html=True)
     st.markdown("""
-        - **Base Image & Setup:**  
-            Uses a lightweight `python:3.9-slim` image. The working directory is set to `/home/api_database`, and necessary files (script and requirements) are copied into the container.
+        - **Setup:**  
+            The working directory is set to `/home/api_database`, and necessary files (script and requirements) are copied into the container.
         - **Directory Structure:**  
             Creates directories for processed and raw data to mimic the expected local file structure.
     """)
@@ -289,8 +288,8 @@ if page == pages[5]:
     </div>
     """, unsafe_allow_html=True)
     st.markdown("""
-    - **Base Image & Setup:**
-        - Uses a lightweight `python:3.9-slim` image. The working directory is set to `/home/api_preprocess_content/data`, and necessary files (script and requirements) are copied into the container.
+    - **Setup:**
+        - The working directory is set to `/home/api_preprocess_content/data`, and necessary files (script and requirements) are copied into the container.
     - **Directory Structure:**
         - Creates any required directories (e.g., `/home/api_preprocess_content/data`).
     """, unsafe_allow_html=True)
@@ -347,8 +346,8 @@ if page == pages[6]:
     </div>
     """, unsafe_allow_html=True)
     st.markdown("""
-    - **Base Image & Setup:**
-        - Uses a lightweight `python:3.9-slim` image. The working directory is set to `/home/api_train_content`, and necessary files (script, custom TF-IDF model files and requirements) are copied into the container.
+    - **Setup:**
+        - The working directory is set to `/home/api_train_content`, and necessary files (script, custom TF-IDF model files and requirements) are copied into the container.
     """)
 
 # ============================================ PAGE 7 (Inference) ============================================
@@ -393,8 +392,8 @@ if page == pages[7]:
     </div>
     """, unsafe_allow_html=True)
     st.markdown("""
-    - **Base Image & Setup:**
-        - Uses a lightweight `python:3.9-slim` image. The working directory is set to `/home/api_inference_content`, and necessary files (inference API, TF-IDF model files, and requirements) are copied into the container.
+    - **Setup:**
+        - The working directory is set to `/home/api_inference_content`, and necessary files (inference API, TF-IDF model files, and requirements) are copied into the container.
     """, unsafe_allow_html=True)
 
 
@@ -415,13 +414,13 @@ if page == pages[8]:
     - **Purpose:** Orchestrates an end-to-end MLOps pipeline by triggering two key API endpoints:
         1. **Preprocessing API:** Calls the preprocessing endpoint to process raw data at preprocess_container
         2. **Training API:** Calls the training endpoint with a JSON payload (containing experiment name, model name, TF-IDF parameters, and a sample fraction) to train a content-based filtering model at training_container
+    - **Task Orchestration:**
+        - The preprocessing task runs first.  
+        - Once completed successfully, the training task is triggered.
     - **DAG Configuration:**
         - **Name:** mlops_pipeline  
         - **Schedule:** Runs daily starting from February 12, 2024.  
         - **Retry Policy:** 1 retry with a 1-minute delay.
-    - **Task Orchestration:**
-        - The preprocessing task runs first.  
-        - Once completed successfully, the training task is triggered.
     """)
     
     # Containerization specificities
@@ -463,6 +462,7 @@ if page == pages[9]:
 
     ##### Strengths of our application:
     - Dynamic Database Connection in each script
+    - Dynamic retrieve of the containers URL's, port etc...
     - Dockerization of each application, to ensure robustness of the global solution
 
     ##### Weaknesses:
@@ -487,4 +487,7 @@ if page == pages[9]:
     - **Improve recommender capabilities:**  
         - Allow users to choose the number of recommendations.  
         - Use Levenshtein distance when a movie not present in the database is written by the user.
+        - Add an other recommender system : collaborative filtering method. 
+                
+    - **Addition of new movies everyday**  
     """) 
