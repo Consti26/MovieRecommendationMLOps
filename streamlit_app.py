@@ -412,11 +412,15 @@ if page == pages[8]:
 
     st.markdown("""
     - **Purpose:** Orchestrates an end-to-end MLOps pipeline by triggering two key API endpoints:
-        1. **Preprocessing API:** Calls the preprocessing endpoint to process raw data at preprocess_container
-        2. **Training API:** Calls the training endpoint with a JSON payload (containing experiment name, model name, TF-IDF parameters, and a sample fraction) to train a content-based filtering model at training_container
+        1. **check_tables_task:** Do a check on the database to ensure the data is present.
+        2. [Optional] **create_database_task:** Create the database if it does not exist.
+        3. [Optional] **preprocess_task:** Calls the preprocessing endpoint to process raw data at preprocess_container
+        4. **train_task:** Calls the training endpoint with a JSON payload (containing experiment name, model name, TF-IDF parameters, and a sample fraction) to train a content-based filtering model at training_container 
+        5. **tag_best_model_task:** Tags the best model as 'stage:production' and 'performance:champion'.
+        6. **fetch_new_model_task:** Fetches a new model based on the 'stage:production' tag.
     - **Task Orchestration:**
-        - The preprocessing task runs first.  
-        - Once completed successfully, the training task is triggered.
+        - All Tasks run sequentially.
+        - The `check_tables_task` is a BranchPythonOperator that decides whether to create the database, proceed with the preprocessing task, or skip to the training task.
     - **DAG Configuration:**
         - **Name:** mlops_pipeline  
         - **Schedule:** Runs daily starting from February 12, 2024.  

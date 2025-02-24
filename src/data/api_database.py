@@ -292,3 +292,32 @@ def read_preprocessed_dataset():
     """Endpoint to fetch the preprocessed dataset."""
     query = "SELECT * FROM preprocessed_dataset"
     return StreamingResponse(stream_data(DATABASE_PATH, query), media_type="application/json")
+
+@app.get("/api/v1/database/check_tables")
+def check_tables():
+    """Endpoint to check if the 'movies' and 'preprocessed_dataset' tables exist and are not empty."""
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+
+    tables_status = {}
+
+    # Check 'movies' table
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='movies'")
+    if cursor.fetchone():
+        cursor.execute("SELECT COUNT(*) FROM movies")
+        count = cursor.fetchone()[0]
+        tables_status['movies'] = 'exists' if count > 0 else 'missing'
+    else:
+        tables_status['movies'] = 'missing'
+
+    # Check 'preprocessed_dataset' table
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='preprocessed_dataset'")
+    if cursor.fetchone():
+        cursor.execute("SELECT COUNT(*) FROM preprocessed_dataset")
+        count = cursor.fetchone()[0]
+        tables_status['preprocessed_dataset'] = 'exists' if count > 0 else 'missing'
+    else:
+        tables_status['preprocessed_dataset'] = 'missing'
+
+    conn.close()
+    return JSONResponse(content=tables_status)

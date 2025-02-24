@@ -3,7 +3,7 @@
 
 export SCRIPT_DIR=$(dirname "$(realpath "$0")")
 
-# # Load environment variables from .env file
+# Load environment variables from .env file
 # if [ -f "${SCRIPT_DIR}/.env" ]; then
 #     export $(cat "${SCRIPT_DIR}/.env" | grep -v '#' | awk '/=/ {print $1}')
 # fi
