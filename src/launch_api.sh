@@ -28,15 +28,15 @@ export SCRIPT_DIR=$(dirname "$(realpath "$0")")
 # # #   clean-up Docker State #
 # # ###########################
 
-# # # Stop and remove all containers
-# docker stop $(docker ps -a -q)
-# docker rm $(docker ps -a -q)
+# Stop and remove all containers
+ docker stop $(docker ps -a -q)
+ docker rm $(docker ps -a -q)
 
 # # Remove all images
-# docker rmi -f $(docker images -a -q)
+ docker rmi -f $(docker images -a -q)
 
 # # Remove all volumes
-# docker volume rm $(docker volume ls -q)
+ docker volume rm $(docker volume ls -q)
 
 # # Prune the system to remove unused data
  docker system prune -f
@@ -56,10 +56,9 @@ export SCRIPT_DIR=$(dirname "$(realpath "$0")")
 # ##################
 # #  up Containers #
 # ##################
-# docker network create movie_recommendation_network
-# docker-compose up --build #--no-cache
- docker compose up --build 
-sleep 10
+ docker network create movie_recommendation_network
+ docker-compose up --build #--no-cache
+
 # Base URL of the API (using the environment variable)
  BASE_URL="http://localhost:${DATABASE_PORT}"
  echo "Testing Database Creation Endpoint (remove existing)"
@@ -71,5 +70,5 @@ sleep 10
 #######################
 
 # docker builder prune -f
-docker-compose up #--build
-# docker builder prune -f
+docker compose up #--build
+# docker builder prune -f‡
