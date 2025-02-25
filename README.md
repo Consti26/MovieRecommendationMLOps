@@ -1,33 +1,23 @@
-MLOps for Movie Recommender System 
-
+The Great Movie Filter - Filtering the Cosmos of Cinema to Find Your Perfect Pick
 ==============================
 
-This project focuses on developing a recommender system embedded within an MLOps framework to ensure the solution is robust, scalable, and maintainable performance of the operations.
+In today’s data-driven landscape, personalized experiences are key to engaging users and driving business value. This project focuses on developing a recommender system embedded within an MLOps framework to ensure the solution is robust, scalable, and maintainable.
+
 
 Project Organization
 ------------
 
     ├── LICENSE                     
-    ├── README.md                   <- The top-level README for developers using this project.
-    ├── __pycache__                 
-    ├── airflow                     <- Configuration & scripts for Apache Airflow
-    │   ├── dags                    <- Airflow DAG definitions for ML pipelines
-    │   │   ├── __pycache__         
-    │   │   │   ├── __pycache__     
-    │   │   │   ├── mlops_dag.py     
-    │   │   │   └── mlops_dag.py    
-    │   │   └── mlops_dag.py         <- Main DAG file defining the MLops pipeline
-    │   ├── docker-compose-old.yml   
-    │   ├── docker-compose.yaml      <- Current Docker Compose configuration for Airflow services
-    │   ├── dockerfile               <- Dockerfile to build the Airflow container image
-    │   ├── logs                     
-    │   ├── plugins                  
-    │   └── requirements.txt         <- Python dependencies required for Airflow
-    ├── create_docker_network.sh      <- Shell script to create a Docker network for container communication
-    ├── models                      <- Directory to store trained machine learning models
-    ├── notebooks                   <- Jupyter notebooks for exploration and experimentation
-    ├── references                  <- Documentation and images detailing architecture and design
-    │   ├── Modelling_documentation.docx
+    ├── README.md                    # Project documentation and overview
+    ├── airflow                      # Airflow orchestration for the MLOps pipeline
+    │   ├── dags                   # DAG definitions
+    │   ├── docker-compose.yaml    # Docker Compose for Airflow
+    │   ├── dockerfile             # Dockerfile for Airflow container
+    │   ├── logs                   
+    │   ├── plugins               
+    │   └── requirements.txt       # Airflow-specific Python dependencies
+    ├── references                 # Documentation, diagrams, and reference materials
+    │   ├── airflow.png
     │   ├── content_based.png
     │   ├── database.png
     │   ├── final_architecture.jpg
@@ -35,66 +25,64 @@ Project Organization
     │   ├── initial_architecture.jpg
     │   ├── movie_recommender.png
     │   ├── preprocessing.png
+    │   ├── siren flowchart code.txt
     │   ├── training.png
     │   └── trends.png
-    ├── reports                     <- Generated reports and figures for analysis
-    │   └── figures                <- Supporting images and charts
-    ├── requirements.txt            <- Global Python dependencies for the entire project
-    ├── src                         <- Main source code for the ML application
-    │   ├── __init__.py             <- Initializes the src package
-    │   ├── config                  <- Configuration files and settings for the application
-    │   ├── data                    <- Data ingestion and processing module
-    │   │   ├── api_database.py      <- Script for API interactions with the database
-    │   │   ├── create_image.sh      <- Script to build a Docker image for the data module
-    │   │   ├── dockerfile           <- Dockerfile for the data module container
-    │   │   ├── processed_data       <- Folder for storing processed datasets (e.g., movielens.db)
-    │   │   ├── raw_data             <- Folder for raw input datasets
-    │   │   ├── requirements.txt     <- Dependencies specific to the data module
-    │   │   └── run_container.sh     <- Script to run the data module container
-    │   ├── docker-compose.yml       <- Docker Compose file for local development
-    │   ├── features                <- Feature engineering code and utilities
-    │   │   ├── WIP                  <- Work-In-Progress feature scripts
-    │   │   ├── __pycache__          <- Cached Python files for features
-    │   │   ├── api_preprocess_content.py  <- API endpoint for content-based preprocessing
-    │   │   ├── dockerfile           <- Dockerfile for the features service container
-    │   │   └── requirements.txt     <- Dependencies for feature engineering
-    │   ├── launch_api.sh            <- Script to launch the ML API service
-    │   ├── models                  <- ML model-related scripts and Docker configurations
-    │   │   ├── WIP                  <- Work-In-Progress model scripts
-    │   │   ├── inference            <- Inference module for serving models
-    │   │   │   ├── api_inference_content.py  <- API endpoint for model inference
-    │   │   │   ├── create_image.sh           <- Build Docker image for the inference service
-    │   │   │   ├── dockerfile                <- Dockerfile for the inference container
-    │   │   │   └── requirements.txt          <- Inference service dependencies
-    │   │   ├── mlflow               <- MLflow integration for experiment tracking
-    │   │   │   ├── create_image.sh   <- Build MLflow Docker image
-    │   │   │   ├── dockerfile        <- Dockerfile for the MLflow container
-    │   │   │   ├── environment.yml   <- Conda environment configuration for MLflow
-    │   │   │   ├── gc_mlflow.sh      <- Script to manage/cleanup MLflow artifacts
-    │   │   │   ├── run_container.sh  <- Run MLflow container
-    │   │   │   └── workdir           <- Workspace for MLflow artifacts and run logs
-    │   │   │       ├── artifacts     <- Artifacts generated during MLflow runs
-    │   │   │       ├── environment.yml
-    │   │   │       ├── mlflow_sees_this_dir  <- Placeholder detected by MLflow
-    │   │   │       └── mlruns        <- MLflow run metadata and stored models
-    │   │   ├── tfidf_vectorizer_model  <- TF-IDF vectorizer model code
-    │   │   │   ├── __init__.py     <- Module initializer for the TF-IDF model
-    │   │   │   └── tfidf_vectorizer_model.py  <- Code for building the TF-IDF vectorizer
-    │   │   └── training            <- Training scripts for machine learning models
-    │   │       ├── api_train_content.py  <- API endpoint to trigger model training
-    │   │       ├── create_image.sh       <- Build Docker image for the training service
-    │   │       ├── dockerfile            <- Dockerfile for the training container
-    │   │       └── requirements.txt      <- Training module dependencies
-    │   ├── test_cases.sh            <- Script to execute overall test cases
-    │   ├── test_db_preprocess.sh    <- Script to test database preprocessing routines
-    │   ├── tests                    <- Unit and integration tests for the project
-    │   │   ├── get_data.py         <- Tests for data retrieval functions
-    │   │   ├── get_data_2.py       <- Additional tests for data retrieval
-    │   │   └── write_data.py       <- Tests for data writing functions
-    │   └── visualization           <- Data visualization utilities and scripts
-    │       ├── __init__.py         <- Initializes the visualization module
-    │       └── visualize.py        <- Script to generate visual representations of data
-    └── streamlit_app.py            <- Streamlit app script for an interactive UI
+    ├── requirements.txt           # Global project Python dependencies
+    └── src                        # Main source code
+        ├── config               # Configuration files and settings
+        ├── data                 # Data ingestion and database API
+        │   ├── api_database.py
+        │   ├── create_image.sh
+        │   ├── dockerfile
+        │   ├── requirements.txt
+        │   └── run_container.sh
+        ├── docker-compose.yml   # Docker Compose for src services
+        ├── features             # Preprocessing
+        │   ├── WIP
+        │   │   ├── preprocessing_collaborative_filtering_mlflow.py
+        │   │   └── preprocessing_content_based_mlflow.py
+        │   ├── api_preprocess_content.py
+        │   ├── dockerfile
+        │   └── requirements.txt
+        ├── launch_api.sh        # Script to launch the main API
+        ├── models               # Model-related code (training, inference, MLflow)
+        │   ├── WIP
+        │   │   ├── modelling_collaborative_filtering_mlflow.py
+        │   │   └── modelling_content_based_mlflow.py
+        │   ├── inference        # Inference API and scripts
+        │   │   ├── api_inference_content.py
+        │   │   ├── create_image.sh
+        │   │   ├── dockerfile
+        │   │   └── requirements.txt
+        │   ├── mlflow           # MLflow integration and tracking
+        │   │   ├── create_image.sh
+        │   │   ├── dockerfile
+        │   │   ├── environment.yml
+        │   │   ├── gc_mlflow.sh
+        │   │   ├── run_container.sh
+        │   │   └── workdir
+        │   │       ├── artifacts
+        │   │       ├── environment.yml
+        │   │       ├── mlflow_sees_this_dir
+        │   │       └── mlruns
+        │   ├── tfidf_vectorizer_model  # Custom TF-IDF model module
+        │   │   └── tfidf_vectorizer_model.py
+        │   └── training         # Training API and scripts
+        │       ├── api_train_content.py
+        │       ├── create_image.sh
+        │       ├── dockerfile
+        │       └── requirements.txt
+        ├── test_cases.sh        # Shell script for test cases
+        ├── test_db_preprocess.sh # Script to test database preprocessing
+        └── tests                # Additional test scripts
+            ├── get_data.py
+            ├── get_data_2.py
+            └── write_data.py
+    ├── create_docker_network.sh     # Script to create a Docker network
+    ├── launch_streamlit.sh          # Script to launch the Streamlit UI    
+    └── streamlit_app.py         # Streamlit interactive application
+
 --------
 
 <p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. <-cookiecutterdatascience</small></p>

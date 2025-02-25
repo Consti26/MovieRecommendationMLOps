@@ -87,3 +87,16 @@ flowchart TD
     F --> O
     O --> P
     P --> Q
+
+AIRFLOW
+flowchart TD
+    A[Start DAG: mlops_pipeline] 
+    A --> B[Check Tables - BranchPythonOperator]
+    B -- "Neither table exists" --> C[Create Database- POST /database/create]
+    B -- "Only movies exists" --> D[Preprocess Data- POST /preprocess_data]
+    B -- "Both tables exist" --> E[Skip Creation & Preprocessing- DummyOperator]
+    C --> D
+    D --> F[Train Model- POST /train_content_filter]
+    E --> F
+    F --> G[Tag Best Model- MLflow: Register & tag model]
+    G --> H[Fetch New Model- POST /fetch_new_model]

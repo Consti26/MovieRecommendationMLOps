@@ -402,6 +402,15 @@ if page == pages[7]:
 if page == pages[8]:
     st.markdown("<h1 style='text-align: center; color: #fdb94a;'>Airflow</h1>", unsafe_allow_html=True)
 
+    # Schema of the process
+    st.markdown("""
+    <div style='text-align: left;'>
+        <h3 style='display: inline; color: #fdb94a;'>Global overview</h3>
+        <hr style='border: 0; height: 1px; background-color: #fdb94a; margin-top: 10px; width: 50%;'>
+    </div>
+    """, unsafe_allow_html=True)
+    st.image("references/airflow.png", width = 600)
+
     # DAG definition
     st.markdown("""
     <div style='text-align: left;'>
@@ -471,9 +480,8 @@ if page == pages[9]:
 
     ##### Weaknesses:
     - No user management for the database, Streamlit, etc.
-    - Limited number of movies in the database
+    - Only 1 recommendation type, using only 1 movie characteristics
     """)
-
 
     # Futur improvments
     st.markdown("""
