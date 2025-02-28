@@ -56,11 +56,18 @@ export SCRIPT_DIR=$(dirname "$(realpath "$0")")
 # ##################
 # #  up Containers #
 # ##################
+ echo "Creating network"
  docker network create movie_recommendation_network
- docker-compose up --build #--no-cache
-
+ echo "Building docker compose"
+ docker compose up --build -d #--no-cache
+    
 # Base URL of the API (using the environment variable)
+ echo "Waiting for 10 secs before ingesting data"
+ sleep 10 # wait for 10 secs before ingesting data 
+ 
+ echo "DATABASE_PORT is set to: ${DATABASE_PORT}"
  BASE_URL="http://localhost:${DATABASE_PORT}"
+ 
  echo "Testing Database Creation Endpoint (remove existing)"
  curl -X POST "${BASE_URL}/api/v1/database/create?remove_existing=true"
  echo -e "\n"
@@ -70,5 +77,5 @@ export SCRIPT_DIR=$(dirname "$(realpath "$0")")
 #######################
 
 # docker builder prune -f
-docker compose up #--build
+# docker compose up #--build
 # docker builder prune -f‡

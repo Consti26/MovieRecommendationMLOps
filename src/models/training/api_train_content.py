@@ -17,31 +17,28 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
 # Get the paths from environment variables
-#DATABASE_CONTAINER = os.getenv('DATABASE_CONTAINER', 'database_container')
-#DATABASE_PORT = int(os.getenv('DATABASE_PORT', '8000'))
-#MLFLOW_CONTAINER = os.getenv('MLFLOW_CONTAINER', 'mlflow_container')
-#MLFLOW_PORT = int(os.getenv('MLFLOW_PORT', '5000'))
+DATABASE_CONTAINER = os.getenv('DATABASE_CONTAINER', 'database_container')
+DATABASE_PORT = int(os.getenv('DATABASE_PORT', '8000'))
+MLFLOW_CONTAINER = os.getenv('MLFLOW_CONTAINER', 'mlflow_container')
+MLFLOW_PORT = int(os.getenv('MLFLOW_PORT', '5000'))
 
-#try:
+try:
     # DNS-Lookup durchführen
-#    DATABASE_ADDRESS = socket.gethostbyname(DATABASE_CONTAINER)
-#    API_DATABASE_URL = 'http://{address}:{port}'.format(address=DATABASE_ADDRESS, port=DATABASE_PORT )
-#    print(f"Die URI von {DATABASE_CONTAINER} ist: {API_DATABASE_URL}")
-#except socket.gaierror as e:
-#    API_DATABASE_URL = 'http://localhost:8000'
-#    print(f"Fehler beim Abrufen der IP-Adresse für {API_DATABASE_URL}: {e}")
+    DATABASE_ADDRESS = socket.gethostbyname(DATABASE_CONTAINER)
+    API_DATABASE_URL = 'http://{address}:{port}'.format(address=DATABASE_ADDRESS, port=DATABASE_PORT )
+    print(f"Die URI von {DATABASE_CONTAINER} ist: {API_DATABASE_URL}")
+except socket.gaierror as e:
+    API_DATABASE_URL = 'http://localhost:8000'
+    print(f"Fehler beim Abrufen der IP-Adresse für {API_DATABASE_URL}: {e}")
 
-#try:
-#    # DNS-Lookup durchführen MLFlow
-#    mlflow_address = socket.gethostbyname(MLFLOW_CONTAINER)
-#    MLFLOW_URL = 'http://{address}:{port}'.format(address=mlflow_address, port=MLFLOW_PORT )
-#    print(f"Die URI von {MLFLOW_CONTAINER} ist: {MLFLOW_URL}")
-#except socket.gaierror as e:
-#    MLFLOW_URL = 'http://localhost:5000'
-#    print(f"Fehler beim Abrufen der IP-Adresse für {MLFLOW_CONTAINER}: {e}")
-
-API_DATABASE_URL = 'http://database_container:8000'
-MLFLOW_URL = 'http://mlflow_container:5040'
+try:
+    # DNS-Lookup durchführen MLFlow
+    mlflow_address = socket.gethostbyname(MLFLOW_CONTAINER)
+    MLFLOW_URL = 'http://{address}:{port}'.format(address=mlflow_address, port=MLFLOW_PORT )
+    print(f"Die URI von {MLFLOW_CONTAINER} ist: {MLFLOW_URL}")
+except socket.gaierror as e:
+    MLFLOW_URL = 'http://localhost:5000'
+    print(f"Fehler beim Abrufen der IP-Adresse für {MLFLOW_CONTAINER}: {e}")
 
 class Artifact(BaseModel):
     path: str

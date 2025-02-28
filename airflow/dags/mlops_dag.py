@@ -1,3 +1,4 @@
+import os
 from airflow import DAG
 from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.operators.dummy import DummyOperator
@@ -6,17 +7,43 @@ import requests
 import mlflow
 from mlflow.tracking import MlflowClient
 
+# Retrieve environment variables with defaults
+DATABASE_PORT = os.getenv("DATABASE_PORT", "8000")
+MLFLOW_PORT = os.getenv("MLFLOW_PORT", "5040")
+PREPROCESSING_PORT = os.getenv("PREPROCESSING_PORT", "9000")
+TRAINING_PORT = os.getenv("TRAINING_PORT", "8080")
+INFERENCE_PORT = os.getenv("INFERENCE_PORT", "8090")
+
+DATABASE_CONTAINER = os.getenv("DATABASE_CONTAINER", "database_container")
+MLFLOW_CONTAINER = os.getenv("MLFLOW_CONTAINER", "mlflow_container")
+# If needed, define container names for the other services
+PREPROCESSING_CONTAINER = os.getenv("PREPROCESSING_CONTAINER", "preprocess_container")
+TRAINING_CONTAINER = os.getenv("TRAINING_CONTAINER", "training_container")
+INFERENCE_CONTAINER = os.getenv("INFERENCE_CONTAINER", "inference_container")
+
+# Construct API URLs using the environment variables
+PREPROCESSING_API_URL = f"http://{PREPROCESSING_CONTAINER}:{PREPROCESSING_PORT}/preprocess_data"
+TRAINING_API_URL = f"http://{TRAINING_CONTAINER}:{TRAINING_PORT}/train_content_filter"
+CHECK_TABLES_API_URL = f"http://{DATABASE_CONTAINER}:{DATABASE_PORT}/api/v1/database/check_tables"
+CREATE_DATABASE_API_URL = f"http://{DATABASE_CONTAINER}:{DATABASE_PORT}/api/v1/database/create"
+MLFLOW_URL = f"http://{MLFLOW_CONTAINER}:{MLFLOW_PORT}"
+FETCH_NEW_MODEL_API_URL = f"http://{INFERENCE_CONTAINER}:{INFERENCE_PORT}/fetch_new_model"
+
 # Définition des constantes API
-PREPROCESSING_API_URL = "http://preprocess_container:9000/preprocess_data"
-TRAINING_API_URL = "http://training_container:7000/train_content_filter"
-CHECK_TABLES_API_URL = "http://database_container:8000/api/v1/database/check_tables"
-CREATE_DATABASE_API_URL = "http://database_container:8000/api/v1/database/create"
-MLFLOW_URL = "http://mlflow_container:5000"
-FETCH_NEW_MODEL_API_URL = "http://inference_container:7090/fetch_new_model"
+#PREPROCESSING_API_URL = "http://preprocess_container:9000/preprocess_data"
+#TRAINING_API_URL = "http://training_container:8080/train_content_filter"
+#CHECK_TABLES_API_URL = "http://database_container:8000/api/v1/database/check_tables"
+#CREATE_DATABASE_API_URL = "http://database_container:8000/api/v1/database/create"
+#MLFLOW_URL = "http://mlflow_container:5040"
+#FETCH_NEW_MODEL_API_URL = "http://inference_container:8090/fetch_new_model"
 
 # Fonction pour appeler l'API de preprocessing
 def call_preprocessing_api():
+    print("starting preprocessing test")
+    print(PREPROCESSING_API_URL)
     response = requests.post(PREPROCESSING_API_URL)
+    print("api request is ok")
+    print(response)
     if response.status_code == 200:
         print("✅ Preprocessing terminé avec succès !")
     else:
@@ -154,16 +181,16 @@ preprocess_task = PythonOperator(
     dag=dag,
 )
 
+skip_creation_and_preprocessing = DummyOperator(
+    task_id='skip_creation_and_preprocessing',
+    dag=dag,
+)
+
 train_task = PythonOperator(
     task_id='train_model',
     python_callable=call_training_api,
     dag=dag,
     trigger_rule='one_success'
-)
-
-skip_creation_and_preprocessing = DummyOperator(
-    task_id='skip_creation_and_preprocessing',
-    dag=dag,
 )
 
 tag_best_model_task = PythonOperator(

@@ -90,25 +90,37 @@ Launching the projet
 
 Follow the steps below to get the project up and running:
 
+0. Open the project in an IDE of your choice
+
 1. **Start the API Server**  
+   
    Navigate to the `src` folder and run:
    ```bash
    bash launch_api.sh
+   Wait for the message "{“message”:“Database created successfully!“}" to appear (around 4min)
+
 
 2.	**Launch Airflow**
+    
     Navigate to the airflow folder and run:
     ```bash
-    docker-compose up --build
+    docker compose up --build -d
+    Wait for the process to finish (around 2min)
 
 3. **Trigger DAG on airflow UI**
+    
     Once the services are running, open your browser and go to: http://localhost:8081/home
+    id : admin
+    password : admin
    
 4. **Start the Streamlit Application**
+    
     Navigate back to the project root folder and run:
     ```bash
     bash launch_streamlit.sh
 
 5. **Query the application**
+    
     Once the Streamlit UI is loaded, go to the Demonstration page to query the application.
 
 ------------

@@ -89,7 +89,7 @@ echo -e "\n"
 
 # Test database preprocessed_dataset
 echo "Create pre processed dataset table"
-curl -X POST http://localhost:8000/api/v1/database/create_preprocessed_table
+curl -X GET http://localhost:8000/api/v1/database/create_preprocessed_table
 echo -e "\n"
 
 echo "Feed pre processed dataset table"

@@ -3,7 +3,7 @@ import requests
 import os 
 import pandas as pd
 
-API_INFERENCE_URL = os.getenv('API_INFERENCE_URL', 'http://localhost:7090/recommend_movie/')
+API_INFERENCE_URL = os.getenv('API_INFERENCE_URL', 'http://localhost:8090/recommend_movie/')
 def call_inference_api(movie_title: str, number_of_recommendations: int = 10, genre: str = None):
     params = {
     "movie_title": movie_title,
