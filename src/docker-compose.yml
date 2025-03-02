@@ -104,5 +104,4 @@ volumes:
 
 networks:
   movie_recommendation_network:
-    #driver: bridge
     external: true

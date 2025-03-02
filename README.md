@@ -110,8 +110,8 @@ Follow the steps below to get the project up and running:
 3. **Trigger DAG on airflow UI**
     
     Once the services are running, open your browser and go to: http://localhost:8081/home
-    id : admin
-    password : admin
+    id : airflow
+    password : airflow
    
 4. **Start the Streamlit Application**
     

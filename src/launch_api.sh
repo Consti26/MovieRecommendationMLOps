@@ -62,15 +62,15 @@ export SCRIPT_DIR=$(dirname "$(realpath "$0")")
  docker compose up --build -d #--no-cache
     
 # Base URL of the API (using the environment variable)
- echo "Waiting for 10 secs before ingesting data"
- sleep 10 # wait for 10 secs before ingesting data 
+# echo "Waiting for 10 secs before ingesting data"
+# sleep 10 # wait for 10 secs before ingesting data 
  
- echo "DATABASE_PORT is set to: ${DATABASE_PORT}"
- BASE_URL="http://localhost:${DATABASE_PORT}"
+# echo "DATABASE_PORT is set to: ${DATABASE_PORT}"
+# BASE_URL="http://localhost:${DATABASE_PORT}"
  
- echo "Testing Database Creation Endpoint (remove existing)"
- curl -X POST "${BASE_URL}/api/v1/database/create?remove_existing=true"
- echo -e "\n"
+# echo "Testing Database Creation Endpoint (remove existing)"
+# curl -X POST "${BASE_URL}/api/v1/database/create?remove_existing=true"
+# echo -e "\n"
 
 #######################
 # Any subsequent Run! #
